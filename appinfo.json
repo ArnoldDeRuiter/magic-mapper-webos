@@ -1,6 +1,6 @@
 {
   "id": "com.github.afonsojramos.magicmapper",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "vendor": "Afonso Ramos",
   "type": "web",
   "main": "index.html",

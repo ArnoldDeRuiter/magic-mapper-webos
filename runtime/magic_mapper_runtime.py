@@ -7,7 +7,7 @@ import tempfile
 import time
 
 
-RUNTIME_VERSION = "0.1.3"
+RUNTIME_VERSION = "0.1.4"
 WEBOS_25_OUTPUT_DEVICE_NAME = "LGE M-RCU - Builtin [1]"
 WEBOS_25_BACK_CODE = 412
 

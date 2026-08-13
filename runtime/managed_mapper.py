@@ -194,7 +194,8 @@ def input_loop(button_map):
                 buttons_waiting[code] = now
 
             if needs_clean_back_replay(upstream.WEBOS_MAJOR_VERSION, event_type, code):
-                suppress_next_sync = True
+                if value == 1:
+                    suppress_next_sync = True
                 if value == 0:
                     print("Replaying Back as a clean webOS 25 keypress")
                     replay_clean_keypress(output_device_path, code)
