@@ -65,10 +65,11 @@ def validate_config(config, buttons, functions):
 class DiscoveryController(object):
     """Coordinates a one-shot, suppressed remote-button discovery request."""
 
-    def __init__(self, request_path, result_path, settle_seconds=0.25):
+    def __init__(self, request_path, result_path, settle_seconds=0.25, cancel_codes=None):
         self.request_path = request_path
         self.result_path = result_path
         self.settle_seconds = settle_seconds
+        self.cancel_codes = set(cancel_codes or (412,))
         self.request_id = None
         self.phase = "idle"
         self.deadline = 0
@@ -94,6 +95,11 @@ class DiscoveryController(object):
         self.poll(pressed_codes, now)
         if self.phase not in ("armed", "capturing"):
             return False
+
+        if self.phase == "armed" and value == 1 and code in self.cancel_codes:
+            self.phase = "complete"
+            self._write_result({"ok": False, "error": "cancelled"})
+            return True
 
         if self.phase == "armed" and value == 1:
             self.phase = "capturing"

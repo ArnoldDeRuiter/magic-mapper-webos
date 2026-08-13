@@ -84,6 +84,16 @@ class DiscoveryTests(unittest.TestCase):
         with open(self.result_path) as result_file:
             self.assertEqual(json.load(result_file)["error"], "timeout")
 
+    def test_back_cancels_without_becoming_a_discovered_button(self):
+        self.request()
+        self.discovery.poll(set(), now=30)
+        self.discovery.poll(set(), now=30.3)
+        self.assertTrue(self.discovery.handle_key(412, 1, None, set(), now=30.4))
+        with open(self.result_path) as result_file:
+            result = json.load(result_file)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"], "cancelled")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -107,6 +107,7 @@
     window.setTimeout(function () {
       platform.discoveryResult(requestId).then(function (result) {
         if (result.pending && attempts < 28) return pollDiscovery(requestId, purpose, attempts + 1);
+        if (!result.ok && result.error === "cancelled") { closeModal(); return; }
         if (!result.ok) throw new Error(result.error || "No button was detected");
         if (result.pending) throw new Error("No button was detected");
         if (String(result.button).indexOf("code_") === 0) throw new Error("That button is not supported yet (code " + result.code + ")");
@@ -188,6 +189,7 @@
   }
 
   function openModal(html, extraClass, closable) {
+    if (!state.modal) state.returnFocus = document.activeElement;
     state.modal = true;
     elements.modalCard.className = "modal-card " + (extraClass || "");
     elements.modalCard.innerHTML = html;
@@ -197,10 +199,13 @@
   }
 
   function closeModal() {
+    var returnFocus = state.returnFocus;
     state.modal = null;
+    state.returnFocus = null;
     elements.modal.hidden = true;
     elements.modalCard.innerHTML = "";
-    elements.discover.focus();
+    if (returnFocus && document.documentElement.contains(returnFocus)) returnFocus.focus();
+    else elements.discover.focus();
   }
 
   function showError(error) {
