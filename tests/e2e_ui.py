@@ -26,16 +26,21 @@ with sync_playwright() as playwright:
     assert page.get_by_role("heading", name="Alexa").is_visible()
     assert page.get_by_text("Restore default action", exact=True).is_visible()
     page.evaluate("""
-      document.dispatchEvent(new KeyboardEvent('keydown', {keyCode: 461, which: 461, bubbles: true}));
+      window.dispatchEvent(new KeyboardEvent('keydown', {keyCode: 461, which: 461, bubbles: true}));
     """)
     assert page.locator("#modal").is_hidden()
     assert page.locator("[data-edit='alexa']").evaluate("element => document.activeElement === element")
+    page.evaluate("""
+      window.dispatchEvent(new KeyboardEvent('keydown', {keyCode: 461, which: 461, bubbles: true}));
+      window.dispatchEvent(new KeyboardEvent('keyup', {keyCode: 461, which: 461, bubbles: true}));
+    """)
+    assert page.get_by_role("heading", name="Remote buttons").is_visible()
 
     page.locator("[data-edit='netflix']").click()
     page.get_by_text("Change action", exact=True).click()
     assert page.get_by_role("heading", name="What should it do?").is_visible()
     page.evaluate("""
-      document.dispatchEvent(new KeyboardEvent('keydown', {keyCode: 461, which: 461, bubbles: true}));
+      window.dispatchEvent(new KeyboardEvent('keydown', {keyCode: 461, which: 461, bubbles: true}));
     """)
     assert page.locator("#modal").is_hidden()
     assert page.locator("[data-edit='netflix']").evaluate("element => document.activeElement === element")

@@ -276,11 +276,24 @@
     }
   }
 
-  document.addEventListener("keydown", function (event) {
+  function consumeBack(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+  }
+
+  window.addEventListener("keydown", function (event) {
     var directions = { 37: "left", 38: "up", 39: "right", 40: "down" };
     if (directions[event.keyCode]) { event.preventDefault(); moveFocus(directions[event.keyCode]); }
-    if ((event.keyCode === 461 || event.keyCode === 27) && state.modal && elements.modal.dataset.closable !== "false") { event.preventDefault(); closeModal(); }
-  });
+    if (event.keyCode === 461 || event.keyCode === 27) {
+      consumeBack(event);
+      if (state.modal && elements.modal.dataset.closable !== "false") closeModal();
+    }
+  }, true);
+
+  window.addEventListener("keyup", function (event) {
+    if (event.keyCode === 461) consumeBack(event);
+  }, true);
 
   elements.primary.onclick = primaryAction;
   elements.discover.onclick = function () { startDiscovery("source"); };

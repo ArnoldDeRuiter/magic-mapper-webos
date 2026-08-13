@@ -1,6 +1,6 @@
 {
   "id": "com.github.afonsojramos.magicmapper",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "vendor": "Afonso Ramos",
   "type": "web",
   "main": "index.html",
@@ -10,5 +10,6 @@
   "bgColor": "#090b0c",
   "iconColor": "#e8ff48",
   "uiRevision": 2,
+  "disableBackHistoryAPI": true,
   "requiredPermissions": ["application.operation"]
 }

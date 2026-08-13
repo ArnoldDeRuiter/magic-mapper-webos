@@ -17,7 +17,14 @@ if VENDOR_DIR not in sys.path:
     sys.path.insert(0, VENDOR_DIR)
 
 import magic_mapper as upstream
-from magic_mapper_runtime import DiscoveryController, RUNTIME_VERSION, atomic_write_json, config_digest
+from magic_mapper_runtime import (
+    DiscoveryController,
+    RUNTIME_VERSION,
+    atomic_write_json,
+    config_digest,
+    needs_clean_back_replay,
+    output_device_name,
+)
 
 with open(os.path.join(VENDOR_DIR, "upstream.json")) as upstream_file:
     UPSTREAM_METADATA = json.load(upstream_file)
@@ -27,6 +34,27 @@ CONFIG_PATH = os.path.join(ROOT_DIR, "magic_mapper_config.json")
 STATE_DIR = "/tmp/magic-mapper"
 APP_DIR = ROOT_DIR
 STOP_REQUESTED = False
+
+
+def write_input_event(output_device, event_type, code, value):
+    now = time.time()
+    seconds = int(now)
+    microseconds = int((now - seconds) * 1000000)
+    event = struct.pack("llHHi", seconds, microseconds, event_type, code, value)
+    os.write(output_device, event)
+
+
+def replay_clean_keypress(output_device_path, code):
+    """Replace stale relayed event bytes with one fresh, complete keypress."""
+    output_device = os.open(output_device_path, os.O_WRONLY)
+    try:
+        write_input_event(output_device, 1, code, 1)
+        write_input_event(output_device, 0, 0, 0)
+        time.sleep(0.08)
+        write_input_event(output_device, 1, code, 0)
+        write_input_event(output_device, 0, 0, 0)
+    finally:
+        os.close(output_device)
 
 
 def load_config():
@@ -85,6 +113,7 @@ def input_loop(button_map):
     event_size = struct.calcsize(input_format)
     buttons_waiting = {}
     pressed_codes = set()
+    suppress_next_sync = False
     discovery = DiscoveryController(
         os.path.join(STATE_DIR, "discover-request.json"),
         os.path.join(STATE_DIR, "discover-result.json"),
@@ -102,10 +131,14 @@ def input_loop(button_map):
         if upstream.EXCLUSIVE_MODE:
             print("EXCLUSIVE_MODE is enabled, taking over input device")
             fcntl.ioctl(input_device, upstream.EVIOCGRAB, 1)
-            output_device_path = upstream.resolve_input_device_by_name(upstream.OUTPUT_DEVICE_NAME)
+            passthrough_device_name = output_device_name(
+                upstream.WEBOS_MAJOR_VERSION,
+                upstream.OUTPUT_DEVICE_NAME,
+            )
+            output_device_path = upstream.resolve_input_device_by_name(passthrough_device_name)
             if not output_device_path:
                 raise RuntimeError("Magic Remote output device was not found")
-            print("Keys will be resent to: %s" % output_device_path)
+            print("Keys will be resent to %s: %s" % (passthrough_device_name, output_device_path))
             output_device = os.open(output_device_path, os.O_WRONLY)
         else:
             print("EXCLUSIVE_MODE is disabled, default actions cannot be blocked")
@@ -134,6 +167,10 @@ def input_loop(button_map):
             unused_sec, unused_usec, event_type, code, value = struct.unpack(input_format, event)
             del unused_sec, unused_usec
 
+            if suppress_next_sync and event_type == 0:
+                suppress_next_sync = False
+                continue
+
             now = time.time()
             key = None
             if event_type == 1:
@@ -155,6 +192,13 @@ def input_loop(button_map):
                 key = upstream.MOUSE_WHEEL.get(code)
                 value = 0
                 buttons_waiting[code] = now
+
+            if needs_clean_back_replay(upstream.WEBOS_MAJOR_VERSION, event_type, code):
+                suppress_next_sync = True
+                if value == 0:
+                    print("Replaying Back as a clean webOS 25 keypress")
+                    replay_clean_keypress(output_device_path, code)
+                continue
 
             actions = button_map.get(key)
             if actions == "disabled":

@@ -7,7 +7,21 @@ import tempfile
 import time
 
 
-RUNTIME_VERSION = "0.1.0"
+RUNTIME_VERSION = "0.1.3"
+WEBOS_25_OUTPUT_DEVICE_NAME = "LGE M-RCU - Builtin [1]"
+WEBOS_25_BACK_CODE = 412
+
+
+def output_device_name(webos_major_version, legacy_name):
+    """Choose the passthrough device that preserves Magic Remote semantics."""
+    # webOS 25 interprets Back from Builtin [2] as Exit; Builtin [1] preserves it.
+    if webos_major_version >= 10:
+        return WEBOS_25_OUTPUT_DEVICE_NAME
+    return legacy_name
+
+
+def needs_clean_back_replay(webos_major_version, event_type, code):
+    return webos_major_version >= 10 and event_type == 1 and code == WEBOS_25_BACK_CODE
 
 
 def atomic_write_json(path, value):
@@ -75,6 +89,7 @@ class DiscoveryController(object):
         self.deadline = 0
         self.armed_at = 0
         self.candidate = None
+        self.suppressed_until_release = set()
 
     def poll(self, pressed_codes, now=None):
         now = now if now is not None else time.time()
@@ -93,10 +108,15 @@ class DiscoveryController(object):
         """Return True when the event belongs to discovery and must be suppressed."""
         now = now if now is not None else time.time()
         self.poll(pressed_codes, now)
+        if code in self.suppressed_until_release:
+            if value == 0:
+                self.suppressed_until_release.discard(code)
+            return True
         if self.phase not in ("armed", "capturing"):
             return False
 
         if self.phase == "armed" and value == 1 and code in self.cancel_codes:
+            self.suppressed_until_release.add(code)
             self.phase = "complete"
             self._write_result({"ok": False, "error": "cancelled"})
             return True

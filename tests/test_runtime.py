@@ -1,14 +1,21 @@
-import json
 import hashlib
+import json
 import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT_DIR, "runtime"))
 
-from magic_mapper_runtime import DiscoveryController, config_digest, validate_config
+from magic_mapper_runtime import (
+    DiscoveryController,
+    config_digest,
+    needs_clean_back_replay,
+    output_device_name,
+    validate_config,
+)
 
 
 BUTTONS = {1: "netflix", 2: "prime", 3: "ok"}
@@ -16,6 +23,28 @@ FUNCTIONS = {"launch_app": True, "press_button": True}
 
 
 class ConfigValidationTests(unittest.TestCase):
+    def test_webos_25_uses_passthrough_device_that_preserves_back(self):
+        self.assertEqual(
+            output_device_name(10, "LGE M-RCU - Builtin [2]"),
+            "LGE M-RCU - Builtin [1]",
+        )
+
+    def test_older_webos_keeps_upstream_passthrough_device(self):
+        self.assertEqual(
+            output_device_name(9, "LGE M-RCU - Builtin [2]"),
+            "LGE M-RCU - Builtin [2]",
+        )
+
+    def test_only_webos_25_back_key_events_are_normalized(self):
+        self.assertTrue(needs_clean_back_replay(10, 1, 412))
+        self.assertFalse(needs_clean_back_replay(9, 1, 412))
+        self.assertFalse(needs_clean_back_replay(10, 0, 0))
+        self.assertFalse(needs_clean_back_replay(10, 1, 1037))
+
+    def test_webos_delivers_back_button_events_to_the_app(self):
+        app_info = json.loads((Path(__file__).parents[1] / "appinfo.json").read_text())
+        self.assertIs(app_info.get("disableBackHistoryAPI"), True)
+
     def test_vendored_upstream_matches_pin(self):
         with open(os.path.join(ROOT_DIR, "vendor", "upstream.json")) as metadata_file:
             metadata = json.load(metadata_file)
@@ -93,6 +122,8 @@ class DiscoveryTests(unittest.TestCase):
             result = json.load(result_file)
         self.assertFalse(result["ok"])
         self.assertEqual(result["error"], "cancelled")
+        self.assertTrue(self.discovery.handle_key(412, 0, None, {412}, now=30.5))
+        self.assertFalse(self.discovery.suppressed_until_release)
 
 
 if __name__ == "__main__":
