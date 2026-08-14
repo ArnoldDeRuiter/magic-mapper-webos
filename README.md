@@ -1,102 +1,103 @@
 # Magic Mapper for webOS
 
-A TV-native Homebrew interface for
-[Magic Mapper](https://github.com/andrewfraley/magic_mapper). Discover, disable,
-or redirect buttons on an LG Magic Remote without editing JSON over SSH.
+A TV-native interface for changing what the buttons on an LG Magic Remote do. Discover, disable, or
+redirect a button without editing JSON over SSH.
 
-This is an independent wrapper, not an official Magic Mapper project. It keeps
-the upstream mapper unmodified and pinned, so the interface adds no maintenance
-or release burden to the upstream repository.
+![Magic Mapper remote buttons screen](assets/screenshots/remote-buttons.png)
 
-## What it does
+This is an independent Homebrew wrapper around
+[Magic Mapper](https://github.com/andrewfraley/magic_mapper), not an official Magic Mapper project.
+The upstream mapper stays unmodified and pinned.
 
-- Discovers a remote button by pressing it and suppresses that discovery press.
-- Disables branded shortcuts such as Netflix, Prime Video, Disney+, Rakuten TV,
-  or Alexa.
-- Opens an app selected from the apps installed on the TV.
-- Makes one remote button behave like another.
-- Covers every action supported by the pinned Magic Mapper runtime: OLED light,
-  energy saving, eye comfort, Dynamic Tone Mapping, screen off, IR, webhooks,
-  TCP commands, HDMI-CEC, and PicCap.
-- Groups actions into remote-friendly TV screens with strict input validation
-  and one-level-at-a-time Back navigation.
-- Can disable the Magic Remote pointer globally from Settings, with a warning
-  and a reversible restart flow.
-- Shows whether the mapper actually holds the remote input device.
-- Restores individual buttons and supports clean removal from the TV UI.
-- Imports supported mappings from a manual Magic Mapper installation on first
-  setup.
+## What it can do
+
+- Discover a remote button while suppressing its normal action.
+- Disable branded shortcuts such as Netflix, Prime Video, Disney+, Rakuten TV, or Alexa.
+- Open any app installed on the TV.
+- Make one remote button behave like another.
+- Adjust OLED light, energy saving, eye comfort, Dynamic Tone Mapping, and screen power.
+- Send IR, HDMI-CEC, TCP, and webhook commands, or toggle PicCap.
+- Disable the Magic Remote pointer globally through a guarded, reversible setting.
+- Restore individual buttons or remove Magic Mapper cleanly from the TV.
+
+Every action exposed by the pinned upstream runtime is available through remote-friendly screens
+with strict input validation and one-level-at-a-time Back navigation.
+
+![Magic Mapper action catalogue](assets/screenshots/action-catalog.png)
 
 ## Requirements
 
 - A rooted LG webOS TV.
 - Homebrew Channel running as root.
-- Python 3 on the TV. This is present on the currently tested webOS versions.
+- Python 3 on the TV.
 
-The first hardware target is an LG C3 running webOS 25 (internal webOS 10.3.1).
-Wider hardware compatibility has not yet been claimed.
+The current hardware target is an LG C3 running webOS 25 (internal webOS 10.3.1). Wider hardware
+compatibility has not yet been claimed.
 
-## How the wrapper works
+## How it works
 
-The TV interface is a TypeScript application built with Vite, SolidJS 2, and
-Tailwind CSS 4. Vite emits relative asset URLs so the compiled SPA can run from
-the packaged webOS application directory without a server or router.
+The TypeScript interface is built with Vite, SolidJS 2, and Tailwind CSS 4. Vite emits relative
+asset URLs so the compiled application runs directly from its webOS package.
 
-The source pin is recorded in [`vendor/upstream.json`](vendor/upstream.json).
-[`vendor/magic_mapper.py`](vendor/magic_mapper.py) is an unmodified copy from
-that commit. Packaging verifies its SHA-256 checksum and fails if it has drifted.
+The managed runtime in [`runtime/managed_mapper.py`](runtime/managed_mapper.py) owns the input loop
+and loads the upstream actions and button definitions. It adds one-shot discovery, authoritative
+status, graceful input release, and app lifecycle handling.
 
-The wrapper in [`runtime/managed_mapper.py`](runtime/managed_mapper.py) owns the
-input loop and imports upstream actions and button definitions. This is what
-adds one-shot discovery, authoritative status, graceful input release, and app
-lifecycle handling without patching upstream code.
+The upstream source pin and checksum live in [`vendor/upstream.json`](vendor/upstream.json).
+Packaging verifies that [`vendor/magic_mapper.py`](vendor/magic_mapper.py) still matches that
+checksum.
 
-To re-fetch the current pin:
+## Development
 
-```sh
-npm run sync-upstream
-```
-
-Updating the pin is a deliberate review step: change the commit and checksum in
-`vendor/upstream.json`, sync, inspect the diff, and run the full hardware checks.
-
-## Build
-
-Node.js 22 or newer is recommended.
+[Nub](https://nubjs.com/) 0.7.5 and Node.js 22 or newer are required.
 
 ```sh
-npm ci
-npm run check
-npm run package
+nub ci
+nub run check
+nub run package
 ```
 
-The IPK is written to `dist/`. `npm run manifest` creates the release manifest
-consumed by Homebrew Channel.
+The IPK is written to `dist/`. `nub run manifest` creates the Homebrew Channel release manifest.
 
-The optional browser flow uses Python Playwright with the system Chrome build.
-After building, keep the preview server running in one terminal:
+Useful commands:
+
+```sh
+nub run dev           # Vite development server
+nub run format        # Format supported files with oxfmt
+nub run lint          # Lint TypeScript and JavaScript with oxlint
+nub run sync-upstream # Re-fetch the pinned upstream source
+```
+
+Updating the upstream pin is a deliberate review step: update the commit and checksum, sync it,
+inspect the diff, and repeat the full hardware checks.
+
+### Browser flow
+
+Install the optional Python dependency, build the app, and keep the preview server running:
 
 ```sh
 python3 -m pip install -r requirements-dev.txt
-npm run build
-npm run preview
+nub run build
+nub run preview
 ```
 
-Then run the flow from another terminal:
+Run the Playwright flow from another terminal:
 
 ```sh
-npm run test:e2e
+nub run test:e2e
 ```
+
+The flow also refreshes the two screenshots in `assets/screenshots/`.
 
 ## State and removal
 
-Mappings and runtime state live under `/var/lib/webosbrew/magic-mapper`. The
-startup hook lives at `/var/lib/webosbrew/init.d/50-magic-mapper`.
+Mappings and runtime state live under `/var/lib/webosbrew/magic-mapper`. The startup hook lives at
+`/var/lib/webosbrew/init.d/50-magic-mapper`.
 
-Uninstalling from the app stops the process, releases the exclusive input grab,
-removes the hook and state directory, and then asks webOS to remove the app.
+Uninstalling from the app stops the process, releases the exclusive input grab, removes the startup
+hook and state, and asks webOS to remove the application.
 
-## License and attribution
+## License
 
-Released under the MIT License. The vendored upstream file retains Andy Fraley's
-copyright and license; wrapper code is copyright Afonso Ramos.
+Released under the MIT License. The vendored upstream file retains Andy Fraley's copyright and
+license; wrapper code is copyright Afonso Ramos.
