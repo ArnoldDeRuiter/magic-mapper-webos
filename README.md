@@ -38,6 +38,10 @@ Wider hardware compatibility has not yet been claimed.
 
 ## How the wrapper works
 
+The TV interface is a TypeScript application built with Vite, SolidJS 2, and
+Tailwind CSS 4. Vite emits relative asset URLs so the compiled SPA can run from
+the packaged webOS application directory without a server or router.
+
 The source pin is recorded in [`vendor/upstream.json`](vendor/upstream.json).
 [`vendor/magic_mapper.py`](vendor/magic_mapper.py) is an unmodified copy from
 that commit. Packaging verifies its SHA-256 checksum and fails if it has drifted.
@@ -68,6 +72,21 @@ npm run package
 
 The IPK is written to `dist/`. `npm run manifest` creates the release manifest
 consumed by Homebrew Channel.
+
+The optional browser flow uses Python Playwright with the system Chrome build.
+After building, keep the preview server running in one terminal:
+
+```sh
+python3 -m pip install -r requirements-dev.txt
+npm run build
+npm run preview
+```
+
+Then run the flow from another terminal:
+
+```sh
+npm run test:e2e
+```
 
 ## State and removal
 

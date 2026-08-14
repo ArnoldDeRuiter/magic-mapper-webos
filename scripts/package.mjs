@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const web = join(root, "build", "web");
 const stage = join(root, "build", "app");
 const output = join(root, "dist");
 const files = [
@@ -12,10 +13,7 @@ const files = [
   "THIRD_PARTY_NOTICES.md",
   "appinfo.json",
   "assets",
-  "css",
   "icon.png",
-  "index.html",
-  "js",
   "largeIcon.png",
   "runtime",
   "vendor",
@@ -35,6 +33,9 @@ if (!stage.startsWith(join(root, "build"))) {
 rmSync(stage, { recursive: true, force: true });
 mkdirSync(stage, { recursive: true });
 mkdirSync(output, { recursive: true });
+for (const file of readdirSync(web)) {
+  cpSync(join(web, file), join(stage, file), { recursive: true });
+}
 for (const file of files) {
   cpSync(join(root, file), join(stage, file), { recursive: true });
 }
@@ -42,5 +43,7 @@ rmSync(join(stage, "runtime", "__pycache__"), { recursive: true, force: true });
 rmSync(join(stage, "vendor", "__pycache__"), { recursive: true, force: true });
 
 const packager = join(root, "node_modules", ".bin", "ares-package");
-const result = spawnSync(packager, [stage, "--outdir", output], { stdio: "inherit" });
+// Vite already minifies the compiled bundle. The webOS CLI's legacy UglifyJS
+// pass cannot parse modern syntax emitted for Chromium 120.
+const result = spawnSync(packager, [stage, "--no-minify", "--outdir", output], { stdio: "inherit" });
 process.exit(result.status ?? 1);

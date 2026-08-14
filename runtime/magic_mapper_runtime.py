@@ -7,7 +7,7 @@ import tempfile
 import time
 
 
-RUNTIME_VERSION = "0.2.0"
+RUNTIME_VERSION = "0.3.0"
 WEBOS_25_OUTPUT_DEVICE_NAME = "LGE M-RCU - Builtin [1]"
 WEBOS_25_BACK_CODE = 412
 ACTION_CATALOG_PATH = os.path.join(os.path.dirname(__file__), "action_catalog.json")

@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   color-scheme: dark;
   --ink: #f6f6f3;
@@ -11,6 +13,14 @@
   --background: #0b0e0d;
   font-family: "LG Smart UI", "Moonstone Miso", "Helvetica Neue", Arial, sans-serif;
   font-synthesis: none;
+}
+
+@theme inline {
+  --color-canvas: var(--background);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-acid: var(--acid);
+  --color-danger: var(--danger);
 }
 
 * { box-sizing: border-box; }

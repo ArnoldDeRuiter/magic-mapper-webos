@@ -1,15 +1,30 @@
 {
   "name": "magic-mapper-webos",
   "private": true,
-  "version": "0.2.0",
+  "type": "module",
+  "version": "0.3.0",
   "description": "A TV-native Homebrew wrapper for Magic Mapper",
   "scripts": {
-    "check": "python3 -m unittest discover -s tests -v && python3 -m py_compile runtime/managed_mapper.py runtime/magic_mapper_runtime.py runtime/mapperctl.py vendor/magic_mapper.py",
-    "package": "node scripts/package.mjs",
+    "build": "vite build",
+    "check": "npm run typecheck && python3 -m unittest discover -s tests -v && python3 -m py_compile runtime/managed_mapper.py runtime/magic_mapper_runtime.py runtime/mapperctl.py vendor/magic_mapper.py",
+    "dev": "vite --host 127.0.0.1",
+    "package": "npm run build && node scripts/package.mjs",
+    "preview": "vite preview --host 127.0.0.1 --port 8765",
+    "test:e2e": "python3 tests/e2e_ui.py",
+    "typecheck": "tsc --noEmit",
     "manifest": "node scripts/manifest.mjs",
     "sync-upstream": "node scripts/sync-upstream.mjs"
   },
   "devDependencies": {
-    "@webos-tools/cli": "^3.2.1"
+    "@solidjs/vite-plugin": "3.0.0-next.28",
+    "@tailwindcss/vite": "4.3.3",
+    "@webos-tools/cli": "^3.2.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "8.2.1"
+  },
+  "dependencies": {
+    "@solidjs/web": "2.0.0-rc.0",
+    "solid-js": "2.0.0-rc.0"
   }
 }
