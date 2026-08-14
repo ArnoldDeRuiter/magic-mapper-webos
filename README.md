@@ -34,6 +34,48 @@ with strict input validation and one-level-at-a-time Back navigation.
 The current hardware target is an LG C3 running webOS 25 (internal webOS 10.3.1). Wider hardware
 compatibility has not yet been claimed.
 
+## Rooting the TV
+
+Magic Mapper cannot run through LG Developer Mode alone: intercepting remote input and starting the
+mapper at boot require root access.
+
+Rooting support depends on the exact TV model and firmware, not only the marketed webOS version.
+Before trying an exploit:
+
+1. Check your model and firmware with [CanI.RootMy.TV](https://cani.rootmy.tv/).
+2. Read the maintained [webOS Homebrew rooting guide](https://www.webosbrew.org/rooting/), including
+   its risks and method-specific compatibility notes.
+3. Follow the method recommended for that exact combination, then enable SSH from Homebrew Channel.
+
+Useful methods and references:
+
+- [SlopBro](https://github.com/throwaway96/slopbro) is a newer proof-of-concept for the `jsserver`
+  vulnerability. Its author reports successful use on webOS 6 and webOS 7–10 (22–25), but describes
+  it as lightly tested. From a computer on the same network, its basic flow is:
+
+  ```sh
+  git clone https://github.com/throwaway96/slopbro.git
+  cd slopbro
+  python3 slopbro.py <TV_IP>
+  ```
+
+  Accept the pairing prompt on the TV and follow the status shown on screen. Use the repository's
+  current instructions and troubleshooting notes rather than copying commands from third-party
+  guides.
+
+- [faultmanager](https://github.com/throwaway96/faultmanager-autoroot) and
+  [DejaVuln](https://www.webosbrew.org/guides/rooting/dejavuln/) cover other firmware generations.
+  The compatibility checker should decide which one you use.
+- [RootMy.TV](https://github.com/RootMyTV/RootMyTV.github.io) documents the older browser-based
+  method and its technical background. It was patched on newer firmware and is mainly relevant to
+  older TVs.
+- The [webOS Homebrew SDK guide](https://www.webosbrew.org/pages/sdk-configuration.html) explains
+  how to configure SSH and the webOS CLI after rooting.
+
+Software exploits generally fail without harming the TV, but careless changes made with root can
+brick it. Do not expose SSH or Telnet to the internet, re-check compatibility before installing
+firmware updates, and do not install LG's Developer Mode app on an already rooted TV.
+
 ## How it works
 
 The TypeScript interface is built with Vite, SolidJS 2, and Tailwind CSS 4. Vite emits relative
