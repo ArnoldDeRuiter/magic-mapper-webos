@@ -76,6 +76,42 @@ Software exploits generally fail without harming the TV, but careless changes ma
 brick it. Do not expose SSH or Telnet to the internet, re-check compatibility before installing
 firmware updates, and do not install LG's Developer Mode app on an already rooted TV.
 
+## Manual installation
+
+Magic Mapper can be installed without the webOS Homebrew repository. This only replaces the app's
+distribution path: the TV still needs root access and Homebrew Channel running as root.
+
+Download the latest `com.github.afonsojramos.magicmapper_*_all.ipk` from the
+[GitHub releases page](https://github.com/afonsojramos/magic-mapper-webos/releases/latest).
+
+### webOS Dev Manager
+
+1. Enable SSH in Homebrew Channel and add the rooted TV to
+   [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop).
+2. Choose **Install app**, select the downloaded IPK, and wait for installation to finish.
+3. Launch Magic Mapper from the TV's app list.
+
+Dev Manager works on Windows, macOS, and Linux and does not require the LG SDK.
+
+### Command line
+
+Configure the TV as a rooted device by following the
+[webOS Homebrew SDK guide](https://www.webosbrew.org/pages/sdk-configuration.html). Once
+`ares-install` can reach the device, download the latest IPK with the GitHub CLI:
+
+```sh
+gh release download --repo afonsojramos/magic-mapper-webos --pattern '*.ipk'
+```
+
+Then install it:
+
+```sh
+ares-install --device webos com.github.afonsojramos.magicmapper_*_all.ipk
+```
+
+Installing an update uses the same command and preserves mappings stored under
+`/var/lib/webosbrew/magic-mapper`.
+
 ## How it works
 
 The TypeScript interface is built with Vite, SolidJS 2, and Tailwind CSS 4. Vite emits relative
