@@ -3,8 +3,11 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 
-SCREENSHOT = Path("/private/tmp/magic-mapper-dashboard.png")
-CATALOG_SCREENSHOT = Path("/private/tmp/magic-mapper-action-catalog.png")
+SCREENSHOT_DIR = Path(__file__).parents[1] / "assets" / "screenshots"
+SCREENSHOT = SCREENSHOT_DIR / "remote-buttons.png"
+CATALOG_SCREENSHOT = SCREENSHOT_DIR / "action-catalog.png"
+
+SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 with sync_playwright() as playwright:
@@ -43,6 +46,10 @@ with sync_playwright() as playwright:
     assert page.get_by_role("heading", name="What should it do?").is_visible()
     assert page.locator("[data-category]").count() == 4
     page.wait_for_function("document.activeElement && document.activeElement.dataset.category === 'common'")
+    modal_box = page.locator(".modal-card").bounding_box()
+    viewport = page.viewport_size
+    assert modal_box is not None and viewport is not None
+    assert modal_box["x"] >= viewport["width"] / 2
     page.screenshot(path=str(CATALOG_SCREENSHOT), full_page=True)
     page.get_by_role("button", name="Picture & screen").click()
     assert page.get_by_role("heading", name="Picture & screen").is_visible()

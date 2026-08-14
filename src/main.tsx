@@ -1,5 +1,8 @@
 import { render } from "@solidjs/web";
+
 import App from "./App";
+
+// oxlint-disable-next-line import/no-unassigned-import -- Vite bundles the global stylesheet.
 import "../css/app.css";
 
 const root = document.getElementById("root");

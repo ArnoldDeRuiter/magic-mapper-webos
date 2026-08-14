@@ -1,5 +1,6 @@
-import { For, Show, createSignal, onCleanup } from "solid-js";
 import type { JSX } from "@solidjs/web";
+import { For, Show, createSignal, onCleanup } from "solid-js";
+
 import catalogSource from "../runtime/action_catalog.json";
 import { platform } from "./platform";
 import type {
@@ -59,9 +60,10 @@ const emptyStatus: MapperStatus = {
 };
 
 function label(button: string): string {
-  return buttonLabels[button] ?? button
-    .replaceAll("_", " ")
-    .replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+  return (
+    buttonLabels[button] ??
+    button.replaceAll("_", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase())
+  );
 }
 
 function actionDefinition(id: string): ActionDefinition | undefined {
@@ -69,7 +71,9 @@ function actionDefinition(id: string): ActionDefinition | undefined {
 }
 
 function optionLabel(field: ActionField, value: unknown): string {
-  return field.options?.find((option) => String(option.value) === String(value))?.label ?? String(value);
+  return (
+    field.options?.find((option) => String(option.value) === String(value))?.label ?? String(value)
+  );
 }
 
 function describe(mapping: Mapping | undefined): string {
@@ -78,17 +82,21 @@ function describe(mapping: Mapping | undefined): string {
   if (!mapping) return "Unchanged";
   const definition = actionDefinition(mapping.function);
   const inputs = mapping.inputs ?? {};
-  if (mapping.function === "launch_app") return `Opens ${String(inputs.app_title ?? inputs.app_id)}`;
+  if (mapping.function === "launch_app")
+    return `Opens ${String(inputs.app_title ?? inputs.app_id)}`;
   if (mapping.function === "press_button") return `Acts like ${label(String(inputs.button))}`;
-  if (mapping.function === "set_oled_backlight") return `OLED light set to ${String(inputs.backlight)}`;
+  if (mapping.function === "set_oled_backlight")
+    return `OLED light set to ${String(inputs.backlight)}`;
   if (mapping.function === "increase_oled_light" || mapping.function === "reduce_oled_light") {
     return `${definition?.title ?? label(mapping.function)} by ${String(inputs.increment ?? 10)}`;
   }
   if (mapping.function === "set_energy_mode") return `Energy saving: ${label(String(inputs.mode))}`;
-  if (mapping.function === "set_dynamic_tone_mapping") return `Dynamic Tone Mapping: ${String(inputs.value)}`;
+  if (mapping.function === "set_dynamic_tone_mapping")
+    return `Dynamic Tone Mapping: ${String(inputs.value)}`;
   if (mapping.function === "send_ir_command") return `IR: ${String(inputs.keycode)}`;
   if (mapping.function === "curl") return `${String(inputs.method ?? "GET")} ${String(inputs.url)}`;
-  if (mapping.function === "send_tcp_command") return `TCP: ${String(inputs.ip)}:${String(inputs.port)}`;
+  if (mapping.function === "send_tcp_command")
+    return `TCP: ${String(inputs.ip)}:${String(inputs.port)}`;
   if (mapping.function === "send_cec_button") return `HDMI-CEC code ${String(inputs.code)}`;
   return definition?.title ?? mapping.function.replaceAll("_", " ");
 }
@@ -103,6 +111,67 @@ function defaultInputs(action: ActionDefinition): EditorValues {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function focusableElements(scope: ParentNode): HTMLElement[] {
+  return Array.from(scope.querySelectorAll<HTMLElement>(".focusable")).filter(
+    (item) => !(item instanceof HTMLButtonElement && item.disabled) && item.offsetParent !== null,
+  );
+}
+
+function view(content: () => JSX.Element, extraClass = "", closable = true): ModalView {
+  return { closable, content, extraClass };
+}
+
+function DiscoveryView(props: { purpose: DiscoveryPurpose }): JSX.Element {
+  return (
+    <>
+      <p class="eyebrow">BUTTON DISCOVERY</p>
+      <h2>{props.purpose === "target" ? "Press the target button" : "Press one remote button"}</h2>
+      <p class="modal-copy">
+        {props.purpose === "target"
+          ? "The first button will behave like this one."
+          : "Its normal action will be blocked while we identify it."}
+      </p>
+      <div class="discovery-signal">···</div>
+      <p class="modal-copy">Waiting for a complete press…</p>
+    </>
+  );
+}
+
+function fieldHint(field: ActionField): string {
+  if (field.type === "boolean") return "OK to toggle";
+  if (field.type === "choice") return "◀  Change  ▶";
+  if (
+    (field.type === "integer" || field.type === "number") &&
+    field.max !== undefined &&
+    field.max <= 100
+  )
+    return "◀  Adjust  ▶";
+  return "OK to type";
+}
+
+function isValueControl(field: ActionField): boolean {
+  return (
+    field.type === "boolean" ||
+    field.type === "choice" ||
+    ((field.type === "integer" || field.type === "number") &&
+      field.max !== undefined &&
+      field.max <= 100)
+  );
+}
+
+function displayInputValue(field: ActionField, value: unknown): string {
+  if (field.type === "object" && value && typeof value === "object")
+    return JSON.stringify(value, null, 2);
+  if (field.type === "stringList" && Array.isArray(value)) return value.join("\n");
+  return value === undefined ? "" : String(value);
+}
+
+function consumeBack(event: KeyboardEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
 }
 
 export default function App(): JSX.Element {
@@ -120,7 +189,7 @@ export default function App(): JSX.Element {
   let returnFocus: HTMLElement | null = null;
   let toastTimer: number | undefined;
 
-  const entries = () => Object.keys(status().config ?? {}).sort();
+  const entries = () => Object.keys(status().config ?? {}).toSorted();
 
   function setBusy(value: boolean): void {
     setBusySignal(value);
@@ -144,11 +213,6 @@ export default function App(): JSX.Element {
     }
   }
 
-  function focusableElements(scope: ParentNode): HTMLElement[] {
-    return Array.from(scope.querySelectorAll<HTMLElement>(".focusable"))
-      .filter((item) => !(item instanceof HTMLButtonElement && item.disabled) && item.offsetParent !== null);
-  }
-
   function focusAt(index = 0): void {
     window.setTimeout(() => {
       if (!modalCard) return;
@@ -160,10 +224,6 @@ export default function App(): JSX.Element {
   function currentFocusIndex(): number {
     if (!modalCard) return 0;
     return Math.max(0, focusableElements(modalCard).indexOf(document.activeElement as HTMLElement));
-  }
-
-  function view(content: () => JSX.Element, extraClass = "", closable = true): ModalView {
-    return { closable, content, extraClass };
   }
 
   function renderModal(nextView: ModalView, focusIndex = 0): void {
@@ -217,16 +277,21 @@ export default function App(): JSX.Element {
 
   function showError(error: unknown): void {
     setBusy(false);
-    rootModal(() => (
-      <>
-        <p class="eyebrow">COULD NOT COMPLETE</p>
-        <h2>Something got in the way.</h2>
-        <p class="modal-copy">{errorMessage(error)}</p>
-        <div class="modal-actions">
-          <button class="secondary focusable" type="button" onClick={closeModal}>Close</button>
-        </div>
-      </>
-    ), "narrow");
+    rootModal(
+      () => (
+        <>
+          <p class="eyebrow">COULD NOT COMPLETE</p>
+          <h2>Something got in the way.</h2>
+          <p class="modal-copy">{errorMessage(error)}</p>
+          <div class="modal-actions">
+            <button class="secondary focusable" type="button" onClick={closeModal}>
+              Close
+            </button>
+          </div>
+        </>
+      ),
+      "narrow",
+    );
   }
 
   async function primaryAction(): Promise<void> {
@@ -255,29 +320,14 @@ export default function App(): JSX.Element {
     }
   }
 
-  function DiscoveryView(props: { purpose: DiscoveryPurpose }): JSX.Element {
-    return (
-      <>
-        <p class="eyebrow">BUTTON DISCOVERY</p>
-        <h2>{props.purpose === "target" ? "Press the target button" : "Press one remote button"}</h2>
-        <p class="modal-copy">
-          {props.purpose === "target"
-            ? "The first button will behave like this one."
-            : "Its normal action will be blocked while we identify it."}
-        </p>
-        <div class="discovery-signal">···</div>
-        <p class="modal-copy">Waiting for a complete press…</p>
-      </>
-    );
-  }
-
   function startDiscovery(purpose: DiscoveryPurpose): void {
     if (!status().active || busy()) return;
     const requestId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
     const content = () => <DiscoveryView purpose={purpose} />;
     if (purpose === "target") pushModal(content, "narrow", false);
     else rootModal(content, "narrow", false);
-    platform.discover(requestId)
+    platform
+      .discover(requestId)
       .then(() => pollDiscovery(requestId, purpose, 0))
       .catch(showError);
   }
@@ -301,7 +351,10 @@ export default function App(): JSX.Element {
           throw new Error(`That button is not supported yet (code ${String(result.code)})`);
         }
         if (purpose === "target") {
-          await applyMapping(sourceButton(), { function: "press_button", inputs: { button: result.button } });
+          await applyMapping(sourceButton(), {
+            function: "press_button",
+            inputs: { button: result.button },
+          });
         } else {
           setSourceButton(result.button);
           showActionChoices(result.button, "replace");
@@ -317,14 +370,26 @@ export default function App(): JSX.Element {
       <div class="choices category-list">
         <For each={catalog.categories}>
           {(category) => {
-            const count = catalog.actions.filter((action) => action.category === category.id).length;
+            const count = catalog.actions.filter(
+              (action) => action.category === category.id,
+            ).length;
             return (
-              <button class="choice focusable" type="button" data-category={category.id} onClick={() => showCategory(category.id)}>
+              <button
+                class="choice focusable"
+                type="button"
+                data-category={category.id}
+                onClick={() => showCategory(category.id)}
+              >
                 <span class="choice-copy">
                   <strong>{category.title}</strong>
                   <span>{category.summary}</span>
                 </span>
-                <span class="choice-meta">{count}<span class="chevron" aria-hidden="true">›</span></span>
+                <span class="choice-meta">
+                  {count}
+                  <span class="chevron" aria-hidden="true">
+                    ›
+                  </span>
+                </span>
               </button>
             );
           }}
@@ -356,10 +421,15 @@ export default function App(): JSX.Element {
     const category = categories.get(props.categoryId);
     if (!category) return <></>;
     const current = status().config[sourceButton() ?? ""];
-    const currentId = current === "disabled"
-      ? "disabled"
-      : current && !Array.isArray(current) ? current.function : undefined;
-    const categoryActions = catalog.actions.filter((action) => action.category === props.categoryId);
+    const currentId =
+      current === "disabled"
+        ? "disabled"
+        : current && !Array.isArray(current)
+          ? current.function
+          : undefined;
+    const categoryActions = catalog.actions.filter(
+      (action) => action.category === props.categoryId,
+    );
     return (
       <>
         <p class="eyebrow">CHOOSE ACTION</p>
@@ -368,8 +438,16 @@ export default function App(): JSX.Element {
         <div class="choices action-list">
           <For each={categoryActions}>
             {(action) => {
-              const unavailable = Boolean(action.requires && capabilities()[action.requires] === false);
-              const meta = unavailable ? "Not installed" : action.id === currentId ? "Current" : action.warning ? "Advanced" : "";
+              const unavailable = Boolean(
+                action.requires && capabilities()[action.requires] === false,
+              );
+              const meta = unavailable
+                ? "Not installed"
+                : action.id === currentId
+                  ? "Current"
+                  : action.warning
+                    ? "Advanced"
+                    : "";
               return (
                 <button
                   class="choice focusable"
@@ -380,9 +458,18 @@ export default function App(): JSX.Element {
                 >
                   <span class="choice-copy">
                     <strong>{action.title}</strong>
-                    <span>{unavailable ? `Install ${action.requires} to use this action.` : action.summary}</span>
+                    <span>
+                      {unavailable
+                        ? `Install ${action.requires} to use this action.`
+                        : action.summary}
+                    </span>
                   </span>
-                  <span class="choice-meta">{meta}<span class="chevron" aria-hidden="true">›</span></span>
+                  <span class="choice-meta">
+                    {meta}
+                    <span class="chevron" aria-hidden="true">
+                      ›
+                    </span>
+                  </span>
                 </button>
               );
             }}
@@ -409,13 +496,19 @@ export default function App(): JSX.Element {
     }
     if (action.editor === "fields") {
       const current = status().config[sourceButton() ?? ""];
-      const existing = current && current !== "disabled" && !Array.isArray(current) && current.function === id
-        ? current.inputs
-        : undefined;
+      const existing =
+        current && current !== "disabled" && !Array.isArray(current) && current.function === id
+          ? current.inputs
+          : undefined;
       showActionEditor(action, existing);
       return;
     }
-    void applyMapping(sourceButton(), id === "disabled" ? "disabled" : { function: id, inputs: defaultInputs(action) as InputValues });
+    void applyMapping(
+      sourceButton(),
+      id === "disabled"
+        ? "disabled"
+        : { function: id, inputs: defaultInputs(action) as InputValues },
+    );
   }
 
   function AppsView(props: { apps: { id: string; title: string }[] }): JSX.Element {
@@ -426,8 +519,15 @@ export default function App(): JSX.Element {
         <div class="app-list">
           <For each={props.apps}>
             {(app) => (
-              <button class="app-option focusable" type="button" data-app-id={app.id} data-app-title={app.title} onClick={() => chooseApp(app)}>
-                <span>{app.title}</span><small>{app.id}</small>
+              <button
+                class="app-option focusable"
+                type="button"
+                data-app-id={app.id}
+                data-app-title={app.title}
+                onClick={() => chooseApp(app)}
+              >
+                <span>{app.title}</span>
+                <small>{app.id}</small>
               </button>
             )}
           </For>
@@ -437,51 +537,46 @@ export default function App(): JSX.Element {
   }
 
   function showApps(): void {
-    pushModal(() => (
-      <>
-        <p class="eyebrow">CHOOSE DESTINATION</p>
-        <h2>Open an app</h2>
-        <p class="modal-copy">Loading the apps installed on this TV…</p>
-      </>
-    ), "", false);
-    platform.apps()
+    pushModal(
+      () => (
+        <>
+          <p class="eyebrow">CHOOSE DESTINATION</p>
+          <h2>Open an app</h2>
+          <p class="modal-copy">Loading the apps installed on this TV…</p>
+        </>
+      ),
+      "",
+      false,
+    );
+    platform
+      .apps()
       .then((response) => replaceModal(() => <AppsView apps={response.apps} />))
       .catch(showError);
   }
 
   function chooseApp(app: { id: string; title: string }): void {
     const current = status().config[sourceButton() ?? ""];
-    const preset = current && current !== "disabled" && !Array.isArray(current)
-      && current.function === "launch_app" && current.inputs.app_id === app.id
-      ? current.inputs
-      : {};
+    const preset =
+      current &&
+      current !== "disabled" &&
+      !Array.isArray(current) &&
+      current.function === "launch_app" &&
+      current.inputs.app_id === app.id
+        ? current.inputs
+        : {};
     const action = actionDefinition("launch_app");
-    if (action) showActionEditor(action, { ...preset, app_id: app.id, app_title: app.title }, `Open ${app.title}`);
-  }
-
-  function fieldHint(field: ActionField): string {
-    if (field.type === "boolean") return "OK to toggle";
-    if (field.type === "choice") return "◀  Change  ▶";
-    if ((field.type === "integer" || field.type === "number") && field.max !== undefined && field.max <= 100) return "◀  Adjust  ▶";
-    return "OK to type";
+    if (action)
+      showActionEditor(
+        action,
+        { ...preset, app_id: app.id, app_title: app.title },
+        `Open ${app.title}`,
+      );
   }
 
   function fieldValueLabel(field: ActionField, value: unknown): string {
     if (field.type === "boolean") return value ? "On" : "Off";
     if (field.type === "choice") return optionLabel(field, value);
     return value === "" || value === undefined ? "Set" : String(value);
-  }
-
-  function isValueControl(field: ActionField): boolean {
-    return field.type === "boolean"
-      || field.type === "choice"
-      || ((field.type === "integer" || field.type === "number") && field.max !== undefined && field.max <= 100);
-  }
-
-  function displayInputValue(field: ActionField, value: unknown): string {
-    if (field.type === "object" && value && typeof value === "object") return JSON.stringify(value, null, 2);
-    if (field.type === "stringList" && Array.isArray(value)) return value.join("\n");
-    return value === undefined ? "" : String(value);
   }
 
   function updateEditorInput(name: string, value: unknown): void {
@@ -500,21 +595,27 @@ export default function App(): JSX.Element {
           data-field-value={String(value())}
           onClick={(event) => adjustField(event.currentTarget, 1)}
         >
-          <span><strong>{props.field.label}</strong><small>{fieldHint(props.field)}</small></span>
+          <span>
+            <strong>{props.field.label}</strong>
+            <small>{fieldHint(props.field)}</small>
+          </span>
           <span class="field-value">{fieldValueLabel(props.field, value())}</span>
         </button>
       );
     }
-    const multiline = props.field.multiline || props.field.type === "object" || props.field.type === "stringList";
+    const multiline =
+      props.field.multiline || props.field.type === "object" || props.field.type === "stringList";
     return (
       <label class="text-field">
         <span class="field-label">{props.field.label}</span>
         <Show
           when={multiline}
-          fallback={(
+          fallback={
             <input
               class="text-control focusable"
-              type={props.field.type === "integer" || props.field.type === "number" ? "number" : "text"}
+              type={
+                props.field.type === "integer" || props.field.type === "number" ? "number" : "text"
+              }
               data-field-name={props.field.name}
               data-field-type={props.field.type}
               placeholder={props.field.placeholder ?? ""}
@@ -524,7 +625,7 @@ export default function App(): JSX.Element {
               value={displayInputValue(props.field, value())}
               onInput={(event) => updateEditorInput(props.field.name, event.currentTarget.value)}
             />
-          )}
+          }
         >
           <textarea
             class="text-control focusable"
@@ -547,19 +648,33 @@ export default function App(): JSX.Element {
         <h2>{props.heading ?? props.action.title}</h2>
         <p class="modal-copy">{props.action.summary}</p>
         <Show when={props.action.warning}>
-          <div class="warning"><strong>Before you continue</strong><p>{props.action.warning}</p></div>
+          <div class="warning">
+            <strong>Before you continue</strong>
+            <p>{props.action.warning}</p>
+          </div>
         </Show>
         <div class="field-list" data-action-form={props.action.id}>
           <For each={fields}>{(field) => <ActionFieldEditor field={field} />}</For>
         </div>
         <div class="modal-actions">
-          <button class="confirm focusable" type="button" data-save-action={props.action.id} onClick={() => saveAction(props.action)}>Use this action</button>
+          <button
+            class="confirm focusable"
+            type="button"
+            data-save-action={props.action.id}
+            onClick={() => saveAction(props.action)}
+          >
+            Use this action
+          </button>
         </div>
       </>
     );
   }
 
-  function showActionEditor(action: ActionDefinition, preset: EditorValues = {}, heading?: string): void {
+  function showActionEditor(
+    action: ActionDefinition,
+    preset: EditorValues = {},
+    heading?: string,
+  ): void {
     setEditorInputs({ ...defaultInputs(action), ...preset });
     pushModal(() => <ActionEditorView action={action} heading={heading} />);
   }
@@ -599,7 +714,11 @@ export default function App(): JSX.Element {
         else delete result[field.name];
       } else if (field.type === "stringList") {
         if (Array.isArray(raw)) result[field.name] = raw;
-        else if (String(raw ?? "").trim()) result[field.name] = String(raw).split("\n").map((line) => line.trim()).filter(Boolean);
+        else if (String(raw ?? "").trim())
+          result[field.name] = String(raw)
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean);
         else delete result[field.name];
       } else if (field.type === "object") {
         if (raw && typeof raw === "object") result[field.name] = raw;
@@ -659,14 +778,30 @@ export default function App(): JSX.Element {
         <h2>{label(props.button)}</h2>
         <p class="modal-copy">{describe(status().config[props.button])}</p>
         <div class="service-list">
-          <button class="service-row focusable" type="button" data-change-mapping onClick={() => showActionChoices(props.button, "push")}>
-            <span>Change action</span><span>›</span>
+          <button
+            class="service-row focusable"
+            type="button"
+            data-change-mapping
+            onClick={() => showActionChoices(props.button, "push")}
+          >
+            <span>Change action</span>
+            <span>›</span>
           </button>
-          <button class="service-row focusable" type="button" data-restore-mapping onClick={() => void removeMapping(props.button)}>
-            <span>Restore default action</span><span>›</span>
+          <button
+            class="service-row focusable"
+            type="button"
+            data-restore-mapping
+            onClick={() => void removeMapping(props.button)}
+          >
+            <span>Restore default action</span>
+            <span>›</span>
           </button>
         </div>
-        <div class="modal-actions"><button class="secondary focusable" type="button" onClick={closeModal}>Done</button></div>
+        <div class="modal-actions">
+          <button class="secondary focusable" type="button" onClick={closeModal}>
+            Done
+          </button>
+        </div>
       </>
     );
   }
@@ -686,20 +821,30 @@ export default function App(): JSX.Element {
         <p class="modal-copy">The mapper runs locally on this TV and starts with webOS.</p>
         <div class="service-list">
           <button class="service-row focusable" type="button" onClick={confirmMouseSetting}>
-            <span><strong>Magic Remote pointer</strong><small>Experimental · applies across the TV</small></span>
+            <span>
+              <strong>Magic Remote pointer</strong>
+              <small>Experimental · applies across the TV</small>
+            </span>
             <span>{blockMouse ? "Blocked" : "Allowed"} ›</span>
           </button>
           <button class="service-row focusable" type="button" onClick={() => void toggleService()}>
-            <span>{active ? "Stop mapper" : "Start mapper"}</span><span>→</span>
+            <span>{active ? "Stop mapper" : "Start mapper"}</span>
+            <span>→</span>
           </button>
           <button class="service-row focusable" type="button" onClick={() => void showLogs()}>
-            <span>View recent log</span><span>→</span>
+            <span>View recent log</span>
+            <span>→</span>
           </button>
           <button class="service-row focusable" type="button" onClick={confirmUninstall}>
-            <span>Uninstall Magic Mapper</span><span>→</span>
+            <span>Uninstall Magic Mapper</span>
+            <span>→</span>
           </button>
         </div>
-        <div class="modal-actions"><button class="secondary focusable" type="button" onClick={closeModal}>Done</button></div>
+        <div class="modal-actions">
+          <button class="secondary focusable" type="button" onClick={closeModal}>
+            Done
+          </button>
+        </div>
       </>
     );
   }
@@ -724,28 +869,50 @@ export default function App(): JSX.Element {
 
   function confirmMouseSetting(): void {
     const blocked = Boolean(status().settings?.block_mouse);
-    pushModal(() => (
-      <>
-        <p class="eyebrow">EXPERIMENTAL SETTING</p>
-        <h2>{blocked ? "Restore the pointer?" : "Disable the pointer?"}</h2>
-        <p class="modal-copy">This changes the Magic Remote globally, not just for mapped buttons. The mapper restarts immediately.</p>
-        <div class="warning"><strong>Keep a fallback handy</strong><p>You can reverse this setting here with the directional pad and OK button.</p></div>
-        <div class="modal-actions">
-          <button class="confirm focusable" type="button" onClick={() => void applyMouseSetting()}>{blocked ? "Allow pointer" : "Block pointer"}</button>
-          <button class="secondary focusable" type="button" onClick={() => backModal()}>Cancel</button>
-        </div>
-      </>
-    ), "narrow");
+    pushModal(
+      () => (
+        <>
+          <p class="eyebrow">EXPERIMENTAL SETTING</p>
+          <h2>{blocked ? "Restore the pointer?" : "Disable the pointer?"}</h2>
+          <p class="modal-copy">
+            This changes the Magic Remote globally, not just for mapped buttons. The mapper restarts
+            immediately.
+          </p>
+          <div class="warning">
+            <strong>Keep a fallback handy</strong>
+            <p>You can reverse this setting here with the directional pad and OK button.</p>
+          </div>
+          <div class="modal-actions">
+            <button
+              class="confirm focusable"
+              type="button"
+              onClick={() => void applyMouseSetting()}
+            >
+              {blocked ? "Allow pointer" : "Block pointer"}
+            </button>
+            <button class="secondary focusable" type="button" onClick={() => backModal()}>
+              Cancel
+            </button>
+          </div>
+        </>
+      ),
+      "narrow",
+    );
   }
 
   async function applyMouseSetting(): Promise<void> {
-    const settings: MapperSettings = { ...status().settings, block_mouse: !status().settings?.block_mouse };
+    const settings: MapperSettings = {
+      ...status().settings,
+      block_mouse: !status().settings?.block_mouse,
+    };
     setBusy(true);
     try {
       const response = await platform.configureSettings(settings);
       setStatus(response.status);
       closeModal();
-      showToast(settings.block_mouse ? "Magic Remote pointer blocked" : "Magic Remote pointer restored");
+      showToast(
+        settings.block_mouse ? "Magic Remote pointer blocked" : "Magic Remote pointer restored",
+      );
     } catch (error) {
       showError(error);
     } finally {
@@ -761,7 +928,11 @@ export default function App(): JSX.Element {
           <p class="eyebrow">RECENT LOG</p>
           <h2>What the mapper sees</h2>
           <pre class="log">{response.log || "No log yet."}</pre>
-          <div class="modal-actions"><button class="secondary focusable" type="button" onClick={() => backModal()}>Back</button></div>
+          <div class="modal-actions">
+            <button class="secondary focusable" type="button" onClick={() => backModal()}>
+              Back
+            </button>
+          </div>
         </>
       ));
     } catch (error) {
@@ -770,17 +941,27 @@ export default function App(): JSX.Element {
   }
 
   function confirmUninstall(): void {
-    pushModal(() => (
-      <>
-        <p class="eyebrow">UNINSTALL</p>
-        <h2>Remove everything?</h2>
-        <p class="modal-copy">This stops the mapper, restores every remote button, removes your mappings and uninstalls this app.</p>
-        <div class="modal-actions">
-          <button class="confirm danger focusable" type="button" onClick={() => void uninstall()}>Uninstall</button>
-          <button class="secondary focusable" type="button" onClick={() => backModal()}>Keep it</button>
-        </div>
-      </>
-    ), "narrow");
+    pushModal(
+      () => (
+        <>
+          <p class="eyebrow">UNINSTALL</p>
+          <h2>Remove everything?</h2>
+          <p class="modal-copy">
+            This stops the mapper, restores every remote button, removes your mappings and
+            uninstalls this app.
+          </p>
+          <div class="modal-actions">
+            <button class="confirm danger focusable" type="button" onClick={() => void uninstall()}>
+              Uninstall
+            </button>
+            <button class="secondary focusable" type="button" onClick={() => backModal()}>
+              Keep it
+            </button>
+          </div>
+        </>
+      ),
+      "narrow",
+    );
   }
 
   async function uninstall(): Promise<void> {
@@ -812,10 +993,17 @@ export default function App(): JSX.Element {
       const box = candidate.getBoundingClientRect();
       const dx = box.left + box.width / 2 - originX;
       const dy = box.top + box.height / 2 - originY;
-      if ((direction === "left" && dx >= -4) || (direction === "right" && dx <= 4)
-        || (direction === "up" && dy >= -4) || (direction === "down" && dy <= 4)) continue;
+      if (
+        (direction === "left" && dx >= -4) ||
+        (direction === "right" && dx <= 4) ||
+        (direction === "up" && dy >= -4) ||
+        (direction === "down" && dy <= 4)
+      )
+        continue;
       const horizontal = direction === "left" || direction === "right";
-      const score = (horizontal ? Math.abs(dx) : Math.abs(dy)) + (horizontal ? Math.abs(dy) : Math.abs(dx)) * 2.2;
+      const score =
+        (horizontal ? Math.abs(dx) : Math.abs(dy)) +
+        (horizontal ? Math.abs(dy) : Math.abs(dx)) * 2.2;
       if (score < bestScore) {
         bestScore = score;
         best = candidate;
@@ -825,17 +1013,19 @@ export default function App(): JSX.Element {
     best?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
-  function consumeBack(event: KeyboardEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-  }
-
   function handleKeyDown(event: KeyboardEvent): void {
-    const directions: Partial<Record<number, Direction>> = { 37: "left", 38: "up", 39: "right", 40: "down" };
+    const directions: Partial<Record<number, Direction>> = {
+      37: "left",
+      38: "up",
+      39: "right",
+      40: "down",
+    };
     const current = document.activeElement as HTMLElement | null;
     const typing = current instanceof HTMLInputElement || current instanceof HTMLTextAreaElement;
-    if ((event.keyCode === 37 || event.keyCode === 39) && current?.classList.contains("value-control")) {
+    if (
+      (event.keyCode === 37 || event.keyCode === 39) &&
+      current?.classList.contains("value-control")
+    ) {
       event.preventDefault();
       adjustField(current, event.keyCode === 37 ? -1 : 1);
       return;
@@ -866,12 +1056,21 @@ export default function App(): JSX.Element {
   Promise.all([
     platform.status(),
     platform.capabilities().catch(() => ({ capabilities: { piccap: false } })),
-  ]).then(([statusResponse, capabilityResponse]) => {
-    setStatus(statusResponse.status);
-    setCapabilities(capabilityResponse.capabilities ?? {});
-    setReady(true);
-    window.setTimeout(() => (statusResponse.status.active ? discoverButton : document.querySelector<HTMLElement>("#primary-button"))?.focus(), 0);
-  }).catch(showError);
+  ])
+    .then(([statusResponse, capabilityResponse]) => {
+      setStatus(statusResponse.status);
+      setCapabilities(capabilityResponse.capabilities ?? {});
+      setReady(true);
+      window.setTimeout(
+        () =>
+          (statusResponse.status.active
+            ? discoverButton
+            : document.querySelector<HTMLElement>("#primary-button")
+          )?.focus(),
+        0,
+      );
+    })
+    .catch(showError);
 
   return (
     <div class={{ "app-root": true, busy: busy() }}>
@@ -884,9 +1083,24 @@ export default function App(): JSX.Element {
           <div class="topbar-actions flex items-center">
             <div class="status-line flex items-center">
               <span class={["status-dot", { active: status().active }]} />
-              <span>{ready() ? status().active ? "Running" : status().installed ? "Stopped" : "Not set up" : "Checking"}</span>
+              <span>
+                {ready()
+                  ? status().active
+                    ? "Running"
+                    : status().installed
+                      ? "Stopped"
+                      : "Not set up"
+                  : "Checking"}
+              </span>
             </div>
-            <button class="icon-button focusable" type="button" aria-label="Settings" onClick={showSystem}><span aria-hidden="true">⚙</span></button>
+            <button
+              class="icon-button focusable"
+              type="button"
+              aria-label="Settings"
+              onClick={showSystem}
+            >
+              <span aria-hidden="true">⚙</span>
+            </button>
           </div>
         </header>
 
@@ -894,26 +1108,46 @@ export default function App(): JSX.Element {
           <section class="screen-heading flex items-center justify-between">
             <div>
               <h1>Remote buttons</h1>
-              <p class="summary">{ready() ? `${entries().length} ${entries().length === 1 ? "button" : "buttons"} changed` : "Reading your mappings…"}</p>
+              <p class="summary">
+                {ready()
+                  ? `${entries().length} ${entries().length === 1 ? "button" : "buttons"} changed`
+                  : "Reading your mappings…"}
+              </p>
             </div>
             <button
-              ref={discoverButton}
+              ref={(element) => {
+                discoverButton = element;
+              }}
               class="primary focusable flex items-center justify-center"
               type="button"
               disabled={!ready() || !status().active}
               onClick={() => startDiscovery("source")}
             >
-              <span class="plus" aria-hidden="true">＋</span><span>Add button</span>
+              <span class="plus" aria-hidden="true">
+                ＋
+              </span>
+              <span>Add button</span>
             </button>
           </section>
 
           <Show when={ready() && !status().active}>
             <section class="service-banner flex items-center justify-between">
               <div>
-                <strong>{status().installed ? "Mapper is stopped" : "Magic Mapper needs setup"}</strong>
-                <p>{status().installed ? "Start it to apply your saved button changes." : "Set up the local service to change remote buttons."}</p>
+                <strong>
+                  {status().installed ? "Mapper is stopped" : "Magic Mapper needs setup"}
+                </strong>
+                <p>
+                  {status().installed
+                    ? "Start it to apply your saved button changes."
+                    : "Set up the local service to change remote buttons."}
+                </p>
               </div>
-              <button id="primary-button" class="secondary focusable" type="button" onClick={() => void primaryAction()}>
+              <button
+                id="primary-button"
+                class="secondary focusable"
+                type="button"
+                onClick={() => void primaryAction()}
+              >
                 {status().installed ? "Start mapper" : "Set up"}
               </button>
             </section>
@@ -922,20 +1156,30 @@ export default function App(): JSX.Element {
           <section class="mappings-section">
             <Show
               when={entries().length > 0}
-              fallback={(
+              fallback={
                 <div class="empty-state flex items-center">
                   <span class="empty-glyph">＋</span>
-                  <div><strong>No changed buttons</strong><p>Choose Add button, then press a button on the remote.</p></div>
+                  <div>
+                    <strong>No changed buttons</strong>
+                    <p>Choose Add button, then press a button on the remote.</p>
+                  </div>
                 </div>
-              )}
+              }
             >
               <div class="mappings">
                 <For each={entries()}>
                   {(button) => (
-                    <button class="mapping-row focusable" type="button" data-edit={button} onClick={() => showMapping(button)}>
+                    <button
+                      class="mapping-row focusable"
+                      type="button"
+                      data-edit={button}
+                      onClick={() => showMapping(button)}
+                    >
                       <span class="key-name">{label(button)}</span>
                       <span class="mapping-action">{describe(status().config[button])}</span>
-                      <span class="chevron" aria-hidden="true">›</span>
+                      <span class="chevron" aria-hidden="true">
+                        ›
+                      </span>
                     </button>
                   )}
                 </For>
@@ -944,20 +1188,31 @@ export default function App(): JSX.Element {
           </section>
         </main>
 
-        <footer class="flex items-center"><span>OK&nbsp; Select</span><span>Back&nbsp; Close</span></footer>
+        <footer class="flex items-center">
+          <span>OK&nbsp; Select</span>
+          <span>Back&nbsp; Close</span>
+        </footer>
       </div>
 
       <div id="modal" class="modal" hidden={!modalView()}>
         <div class="modal-scrim" />
         <Show when={modalView()} keyed>
           {(current) => (
-            <section ref={modalCard} class={`modal-card ${current.extraClass}`} role="dialog" aria-modal="true" data-closable={current.closable}>
+            <dialog
+              ref={(element) => {
+                modalCard = element;
+              }}
+              open
+              class={`modal-card ${current.extraClass}`}
+              aria-modal="true"
+              data-closable={current.closable}
+            >
               {current.content()}
-            </section>
+            </dialog>
           )}
         </Show>
       </div>
-      <Show when={toast()}>{(message) => <div class="toast" role="status">{message()}</div>}</Show>
+      <Show when={toast()}>{(message) => <output class="toast">{message()}</output>}</Show>
     </div>
   );
 }

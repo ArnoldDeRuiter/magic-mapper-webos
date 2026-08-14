@@ -19,7 +19,16 @@ export interface ActionField {
   placeholder?: string;
   required?: boolean;
   step?: number;
-  type: "boolean" | "button" | "choice" | "integer" | "number" | "object" | "string" | "stringList" | "url";
+  type:
+    | "boolean"
+    | "button"
+    | "choice"
+    | "integer"
+    | "number"
+    | "object"
+    | "string"
+    | "stringList"
+    | "url";
 }
 
 export interface ActionDefinition {

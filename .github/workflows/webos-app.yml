@@ -17,10 +17,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run check
-      - run: npm run package
+      - run: npm install --global @nubjs/nub@0.7.5
+      - run: nub ci
+      - run: nub run check
+      - run: nub run package
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -33,11 +33,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run package
-      - run: npm run manifest
+      - run: npm install --global @nubjs/nub@0.7.5
+      - run: nub ci
+      - run: nub run package
+      - run: nub run manifest
       - name: Publish release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.ipk dist/*.manifest.json largeIcon.png --generate-notes --verify-tag
+        run:
+          gh release create "$GITHUB_REF_NAME" dist/*.ipk dist/*.manifest.json largeIcon.png
+          --generate-notes --verify-tag
