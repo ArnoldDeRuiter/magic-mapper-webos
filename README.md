@@ -84,7 +84,10 @@ distribution path: the TV still needs root access and Homebrew Channel running a
 Download the latest `com.github.afonsojramos.magicmapper_*_all.ipk` from the
 [GitHub releases page](https://github.com/afonsojramos/magic-mapper-webos/releases/latest).
 
-### webOS Dev Manager
+### webOS Dev Manager (documented, not yet tested)
+
+webOS Dev Manager officially supports rooted TVs and installing local IPKs, but this project has not
+yet tested the following path with Magic Mapper:
 
 1. Enable SSH in Homebrew Channel and add the rooted TV to
    [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop).
@@ -93,7 +96,9 @@ Download the latest `com.github.afonsojramos.magicmapper_*_all.ipk` from the
 
 Dev Manager works on Windows, macOS, and Linux and does not require the LG SDK.
 
-### Command line
+### Command line (tested)
+
+This is the installation method used for the current LG C3 hardware testing.
 
 Configure the TV as a rooted device by following the
 [webOS Homebrew SDK guide](https://www.webosbrew.org/pages/sdk-configuration.html). Once
