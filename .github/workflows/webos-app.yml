@@ -13,10 +13,11 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
+          package-manager-cache: false
       - run: npm install --global @nubjs/nub@0.7.5
       - run: nub ci
       - run: nub run check
@@ -29,10 +30,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
+          package-manager-cache: false
       - run: npm install --global @nubjs/nub@0.7.5
       - run: nub ci
       - run: nub run package
@@ -40,6 +42,6 @@ jobs:
       - name: Publish release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run:
+        run: >-
           gh release create "$GITHUB_REF_NAME" dist/*.ipk dist/*.manifest.json largeIcon.png
           --generate-notes --verify-tag

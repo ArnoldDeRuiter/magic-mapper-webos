@@ -91,7 +91,7 @@ checksum.
 
 ## Development
 
-[Nub](https://nubjs.com/) 0.7.5 and Node.js 22 or newer are required.
+[Nub](https://nubjs.com/) 0.7.5 and Node.js 24 or newer are required.
 
 ```sh
 nub ci
