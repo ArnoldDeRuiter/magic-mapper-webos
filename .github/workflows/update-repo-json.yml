@@ -51,7 +51,7 @@ jobs:
           m["ipkUrl"] = "${{ steps.asset.outputs.ipk_url }}"
           m["ipkHash"]["sha256"] = "${{ steps.asset.outputs.hash }}"
           with open("repo.json", "w") as f:
-              json.dump(data, f, indent=4)
+              json.dump(data, f, indent=2)
               f.write("\n")
           EOF
 
