@@ -15,6 +15,7 @@ const files = [
   "assets",
   "icon.png",
   "largeIcon.png",
+  "splash.png",
   "runtime",
   "vendor",
 ];
