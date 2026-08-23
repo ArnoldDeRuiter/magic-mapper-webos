@@ -35,23 +35,28 @@ jobs:
         with:
           ref: main
 
-      # Catches the release-before-the-version-bump-lands-on-main mistake
-      # early, instead of silently shipping an ipk internally labeled with
-      # the previous version -- happened three times before this check
-      # existed (1.0.4, 1.0.5, 1.0.6 all built while appinfo.json still had
-      # an older version).
-      - name: Check appinfo.json version matches the release tag
+      # The release tag is the single source of truth for the version --
+      # write it into both files instead of relying on someone remembering
+      # to bump them first. (Previously appinfo.json's version had to be
+      # bumped by hand before releasing; 1.0.4, 1.0.5, and 1.0.6 all shipped
+      # mislabeled internally because that manual step got skipped.)
+      - name: Set app version from release tag
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           set -e
-          APP_VERSION=$(python3 -c "import json;print(json.load(open('appinfo.json'))['version'])")
-          EXPECTED="${TAG#v}"
-          if [ "$APP_VERSION" != "$EXPECTED" ]; then
-            echo "::error::appinfo.json version ($APP_VERSION) does not match release tag ($TAG)."
-            echo "::error::Push a commit bumping appinfo.json + package.json to $EXPECTED, then re-run this release."
-            exit 1
-          fi
+          VERSION="${TAG#v}"
+          python3 - "$VERSION" <<'EOF'
+          import json, sys
+          version = sys.argv[1]
+          for path in ("appinfo.json", "package.json"):
+              with open(path) as f:
+                  data = json.load(f)
+              data["version"] = version
+              with open(path, "w") as f:
+                  json.dump(data, f, indent=2)
+                  f.write("\n")
+          EOF
 
       - uses: actions/setup-node@v7
         with:
@@ -104,7 +109,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add repo.json
+          git add repo.json appinfo.json package.json
           git diff --staged --quiet && exit 0
-          git commit -m "Update repo.json for ${{ github.event.release.tag_name }}"
+          git commit -m "Set version to ${{ github.event.release.tag_name }}"
           git push origin main
