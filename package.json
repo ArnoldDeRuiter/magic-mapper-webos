@@ -1,6 +1,6 @@
 {
   "name": "magic-mapper-webos",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "private": true,
   "description": "A TV-native Homebrew wrapper for Magic Mapper",
   "type": "module",

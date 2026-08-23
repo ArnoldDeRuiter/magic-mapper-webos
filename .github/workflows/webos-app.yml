@@ -34,6 +34,25 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: main
+
+      # Catches the release-before-the-version-bump-lands-on-main mistake
+      # early, instead of silently shipping an ipk internally labeled with
+      # the previous version -- happened three times before this check
+      # existed (1.0.4, 1.0.5, 1.0.6 all built while appinfo.json still had
+      # an older version).
+      - name: Check appinfo.json version matches the release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -e
+          APP_VERSION=$(python3 -c "import json;print(json.load(open('appinfo.json'))['version'])")
+          EXPECTED="${TAG#v}"
+          if [ "$APP_VERSION" != "$EXPECTED" ]; then
+            echo "::error::appinfo.json version ($APP_VERSION) does not match release tag ($TAG)."
+            echo "::error::Push a commit bumping appinfo.json + package.json to $EXPECTED, then re-run this release."
+            exit 1
+          fi
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
