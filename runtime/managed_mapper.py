@@ -210,7 +210,25 @@ def input_loop(button_map):
 
             if not actions:
                 if upstream.EXCLUSIVE_MODE and not (upstream.BLOCK_MOUSE and code == 1198):
-                    os.write(output_device, event)
+                    try:
+                        os.write(output_device, event)
+                    except OSError as write_err:
+                        # The passthrough device node can transiently
+                        # disappear/reset (seen live as "[Errno 19] No such
+                        # device") -- previously this crashed the whole
+                        # exclusive-grab loop, silently killing all remote
+                        # input until something relaunched the process.
+                        # Reopen and retry once instead of dying.
+                        print("WARNING: passthrough write failed (%s), reopening output device" % write_err)
+                        try:
+                            os.close(output_device)
+                        except OSError:
+                            pass
+                        try:
+                            output_device = os.open(output_device_path, os.O_WRONLY)
+                            os.write(output_device, event)
+                        except OSError as reopen_err:
+                            print("ERROR: could not reopen output device: %s" % reopen_err)
                 if key and value == 1:
                     print("Button %s is unchanged" % key)
                 elif value == 1:
