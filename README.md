@@ -189,10 +189,13 @@ The flow also refreshes the two screenshots in `assets/screenshots/`.
 
 ## Releasing
 
-Publish a GitHub release and the tag drives everything else. CI writes the tag's version into
-`appinfo.json` and `package.json`, builds and attaches the IPK, regenerates `repo.json` with the new
-download URL and checksum, and commits those files back to `main`. Versions are never bumped by
-hand.
+Releases are managed by [Release Please](https://github.com/googleapis/release-please). It reads the
+conventional commits on `main`, keeps a release pull request open carrying the next version and a
+generated `CHANGELOG.md`, and tags the release once that pull request is merged.
+
+Tagging then drives the build. CI writes the tag's version into `appinfo.json` and `package.json`,
+builds and attaches the IPK, regenerates `repo.json` with the new download URL and checksum, and
+commits those files back to `main`. Versions are never bumped by hand.
 
 ## State and removal
 
