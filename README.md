@@ -187,6 +187,13 @@ nub run test:e2e
 
 The flow also refreshes the two screenshots in `assets/screenshots/`.
 
+## Releasing
+
+Publish a GitHub release and the tag drives everything else. CI writes the tag's version into
+`appinfo.json` and `package.json`, builds and attaches the IPK, regenerates `repo.json` with the new
+download URL and checksum, and commits those files back to `main`. Versions are never bumped by
+hand.
+
 ## State and removal
 
 Mappings and runtime state live under `/var/lib/webosbrew/magic-mapper`. The startup hook lives at
