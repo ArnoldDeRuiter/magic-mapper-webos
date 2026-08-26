@@ -1,6 +1,8 @@
 import hashlib
 import json
 import os
+import select
+import struct
 import sys
 import tempfile
 import unittest
@@ -18,7 +20,7 @@ from magic_mapper_runtime import (
     validate_config,
     validate_settings,
 )
-from managed_mapper import write_passthrough
+from managed_mapper import open_input_device, write_passthrough
 
 
 BUTTONS = {1: "netflix", 2: "prime", 3: "ok"}
@@ -239,6 +241,60 @@ class PassthroughWriteTests(unittest.TestCase):
         open(self.device_path, "wb").close()
         self.track(write_passthrough(output_device, self.device_path, b"back"))
         self.assertEqual(self.written(), b"back")
+
+
+class InputDeviceReadTests(unittest.TestCase):
+    """An evdev node delivers a key and its SYN_REPORT in a single write."""
+
+    EVENT_FORMAT = "llHHi"
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.temp_dir.name, "event-node")
+        os.mkfifo(self.path)
+        self.writer = os.open(self.path, os.O_RDWR)
+        self.reader = None
+
+    def tearDown(self):
+        if self.reader is not None:
+            self.reader.close()
+        os.close(self.writer)
+        self.temp_dir.cleanup()
+
+    def event(self, event_type, code, value):
+        return struct.pack(self.EVENT_FORMAT, 0, 0, event_type, code, value)
+
+    def drain(self, reader, limit=8):
+        size = struct.calcsize(self.EVENT_FORMAT)
+        collected = []
+        for _ in range(limit):
+            readable, _, _ = select.select([reader], [], [], 0.2)
+            if not readable:
+                break
+            chunk = reader.read(size)
+            if len(chunk) != size:
+                break
+            collected.append(struct.unpack(self.EVENT_FORMAT, chunk)[2:])
+        return collected
+
+    def test_select_loop_sees_the_sync_that_follows_a_keypress(self):
+        os.write(self.writer, self.event(1, 115, 1) + self.event(0, 0, 0))
+        self.reader = open_input_device(self.path)
+        self.assertEqual(self.drain(self.reader), [(1, 115, 1), (0, 0, 0)])
+
+    def test_select_loop_sees_a_full_press_and_release_written_together(self):
+        batch = (
+            self.event(1, 115, 1)
+            + self.event(0, 0, 0)
+            + self.event(1, 115, 0)
+            + self.event(0, 0, 0)
+        )
+        os.write(self.writer, batch)
+        self.reader = open_input_device(self.path)
+        self.assertEqual(
+            self.drain(self.reader),
+            [(1, 115, 1), (0, 0, 0), (1, 115, 0), (0, 0, 0)],
+        )
 
 
 if __name__ == "__main__":

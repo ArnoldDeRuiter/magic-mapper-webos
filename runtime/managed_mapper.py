@@ -44,6 +44,16 @@ def write_input_event(output_device, event_type, code, value):
     os.write(output_device, event)
 
 
+def open_input_device(path):
+    """Open an evdev node so that select() sees every queued event.
+
+    A buffered reader drains the kernel queue into user space in one syscall but
+    hands back a single event, and select() then reports the descriptor as not
+    readable. The remaining events stay stranded until fresh input arrives.
+    """
+    return open(path, "rb", buffering=0)
+
+
 def write_passthrough(output_device, output_device_path, event):
     """Forward event to the passthrough device, reopening it if the node reset.
 
@@ -151,7 +161,7 @@ def input_loop(button_map):
     if not input_device_path:
         raise RuntimeError("Magic Remote input device was not found")
     print("Opening input device: %s" % input_device_path)
-    input_device = open(input_device_path, "rb")
+    input_device = open_input_device(input_device_path)
     output_device_path = None
     output_device = None
 
