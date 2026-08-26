@@ -9,6 +9,7 @@
   "largeIcon": "largeIcon.png",
   "bgColor": "#090b0c",
   "iconColor": "#e8ff48",
+  "splashBackground": "splash.png",
   "uiRevision": 2,
   "disableBackHistoryAPI": true,
   "requiredPermissions": ["application.operation"]
