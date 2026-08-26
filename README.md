@@ -76,6 +76,20 @@ Software exploits generally fail without harming the TV, but careless changes ma
 brick it. Do not expose SSH or Telnet to the internet, re-check compatibility before installing
 firmware updates, and do not install LG's Developer Mode app on an already rooted TV.
 
+## Installing from Homebrew Channel
+
+Magic Mapper publishes a [`repo.json`](repo.json) repository index, so Homebrew Channel can track it
+and offer updates. The TV still needs root access and Homebrew Channel running as root.
+
+In Homebrew Channel, open **Add repository** and enter:
+
+```
+https://raw.githubusercontent.com/afonsojramos/magic-mapper-webos/main/repo.json
+```
+
+Magic Mapper then appears in the app list and updates alongside everything else Homebrew Channel
+manages.
+
 ## Manual installation
 
 Magic Mapper can be installed without the webOS Homebrew repository. This only replaces the app's
@@ -140,7 +154,8 @@ nub run check
 nub run package
 ```
 
-The IPK is written to `dist/`. `nub run manifest` creates the Homebrew Channel release manifest.
+The IPK is written to `dist/`. `nub run manifest` creates the Homebrew Channel release manifest and
+regenerates [`repo.json`](repo.json) from it.
 
 Useful commands:
 
