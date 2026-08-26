@@ -30,7 +30,7 @@ writeFileSync(manifestPath, `${JSON.stringify(manifest)}\n`);
 console.log(manifestPath);
 
 const releaseTag = process.env.RELEASE_TAG || `v${app.version}`;
-const repoPath = join(root, "repo.json");
+const repoPath = join(root, "dist", "repo.json");
 const repo = {
   paging: { page: 1, count: 1, maxPage: 1, itemsTotal: 1 },
   packages: [

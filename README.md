@@ -78,13 +78,13 @@ firmware updates, and do not install LG's Developer Mode app on an already roote
 
 ## Installing from Homebrew Channel
 
-Magic Mapper publishes a [`repo.json`](repo.json) repository index, so Homebrew Channel can track it
-and offer updates. The TV still needs root access and Homebrew Channel running as root.
+Magic Mapper publishes a `repo.json` repository index with every release, so Homebrew Channel can
+track it and offer updates. The TV still needs root access and Homebrew Channel running as root.
 
 In Homebrew Channel, open **Add repository** and enter:
 
 ```
-https://raw.githubusercontent.com/afonsojramos/magic-mapper-webos/main/repo.json
+https://github.com/afonsojramos/magic-mapper-webos/releases/latest/download/repo.json
 ```
 
 Magic Mapper then appears in the app list and updates alongside everything else Homebrew Channel
@@ -155,7 +155,7 @@ nub run package
 ```
 
 The IPK is written to `dist/`. `nub run manifest` creates the Homebrew Channel release manifest and
-regenerates [`repo.json`](repo.json) from it.
+the `repo.json` repository index beside it.
 
 Useful commands:
 
@@ -194,8 +194,9 @@ conventional commits on `main`, keeps a release pull request open carrying the n
 generated `CHANGELOG.md`, and tags the release once that pull request is merged.
 
 Tagging then drives the build. CI writes the tag's version into `appinfo.json` and `package.json`,
-builds and attaches the IPK, regenerates `repo.json` with the new download URL and checksum, and
-commits those files back to `main`. Versions are never bumped by hand.
+builds the IPK, and attaches it to the release along with `repo.json` describing that exact build.
+Versions are never bumped by hand, and nothing is committed back to `main`, so `appinfo.json` in the
+repository is a placeholder that the release build overwrites.
 
 ## State and removal
 

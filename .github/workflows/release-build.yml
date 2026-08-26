@@ -53,23 +53,13 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
 
+      # repo.json ships as a release asset rather than a commit, so the release
+      # index always describes the build it was generated from and nothing has
+      # to push back to a protected branch.
       - name: Attach release assets
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: >-
-          gh release upload "$TAG" dist/*.ipk dist/*.manifest.json largeIcon.png --repo
-          "$GITHUB_REPOSITORY" --clobber
-
-      - name: Commit version and repository index
-        env:
-          TAG: ${{ inputs.tag }}
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --staged --quiet && exit 0
-          git commit -m "chore: set version to $TAG"
-          git pull --rebase origin main
-          git push origin main
+          gh release upload "$TAG" dist/*.ipk dist/*.manifest.json dist/repo.json largeIcon.png
+          --repo "$GITHUB_REPOSITORY" --clobber
