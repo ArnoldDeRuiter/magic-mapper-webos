@@ -44,6 +44,34 @@ def write_input_event(output_device, event_type, code, value):
     os.write(output_device, event)
 
 
+def write_passthrough(output_device, output_device_path, event):
+    """Forward event to the passthrough device, reopening it if the node reset.
+
+    Returns the descriptor to use for the next write, or None when the device
+    could not be reopened, in which case the following call retries the open.
+    """
+    if output_device is not None:
+        try:
+            os.write(output_device, event)
+            return output_device
+        except OSError as write_err:
+            print("WARNING: passthrough write failed (%s), reopening output device" % write_err)
+            try:
+                os.close(output_device)
+            except OSError:
+                pass
+    try:
+        reopened = os.open(output_device_path, os.O_WRONLY)
+    except OSError as open_err:
+        print("ERROR: could not reopen output device: %s" % open_err)
+        return None
+    try:
+        os.write(reopened, event)
+    except OSError as retry_err:
+        print("ERROR: passthrough write failed after reopen: %s" % retry_err)
+    return reopened
+
+
 def replay_clean_keypress(output_device_path, code):
     """Replace stale relayed event bytes with one fresh, complete keypress."""
     output_device = os.open(output_device_path, os.O_WRONLY)
@@ -210,7 +238,7 @@ def input_loop(button_map):
 
             if not actions:
                 if upstream.EXCLUSIVE_MODE and not (upstream.BLOCK_MOUSE and code == 1198):
-                    os.write(output_device, event)
+                    output_device = write_passthrough(output_device, output_device_path, event)
                 if key and value == 1:
                     print("Button %s is unchanged" % key)
                 elif value == 1:

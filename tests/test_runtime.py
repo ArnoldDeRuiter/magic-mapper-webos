@@ -18,6 +18,7 @@ from magic_mapper_runtime import (
     validate_config,
     validate_settings,
 )
+from managed_mapper import write_passthrough
 
 
 BUTTONS = {1: "netflix", 2: "prime", 3: "ok"}
@@ -187,6 +188,57 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result["error"], "cancelled")
         self.assertTrue(self.discovery.handle_key(412, 0, None, {412}, now=30.5))
         self.assertFalse(self.discovery.suppressed_until_release)
+
+
+class PassthroughWriteTests(unittest.TestCase):
+    CLOSED_FD = 9999
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.device_path = os.path.join(self.temp_dir.name, "passthrough")
+        open(self.device_path, "wb").close()
+        self.open_fds = []
+
+    def tearDown(self):
+        for fd in self.open_fds:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        self.temp_dir.cleanup()
+
+    def track(self, fd):
+        if fd is not None:
+            self.open_fds.append(fd)
+        return fd
+
+    def written(self):
+        with open(self.device_path, "rb") as device:
+            return device.read()
+
+    def test_reuses_the_descriptor_while_the_device_is_healthy(self):
+        fd = self.track(os.open(self.device_path, os.O_WRONLY))
+        self.assertEqual(write_passthrough(fd, self.device_path, b"ab"), fd)
+        self.assertEqual(write_passthrough(fd, self.device_path, b"cd"), fd)
+        self.assertEqual(self.written(), b"abcd")
+
+    def test_reopens_and_still_delivers_the_event_after_the_node_resets(self):
+        fd = self.track(write_passthrough(self.CLOSED_FD, self.device_path, b"xy"))
+        self.assertIsNotNone(fd)
+        self.assertNotEqual(fd, self.CLOSED_FD)
+        self.assertEqual(self.written(), b"xy")
+
+    def test_reports_no_descriptor_when_the_device_is_gone(self):
+        os.remove(self.device_path)
+        self.assertIsNone(write_passthrough(self.CLOSED_FD, self.device_path, b"xy"))
+
+    def test_recovers_on_a_later_event_once_the_device_returns(self):
+        os.remove(self.device_path)
+        output_device = write_passthrough(self.CLOSED_FD, self.device_path, b"lost")
+        self.assertIsNone(output_device)
+        open(self.device_path, "wb").close()
+        self.track(write_passthrough(output_device, self.device_path, b"back"))
+        self.assertEqual(self.written(), b"back")
 
 
 if __name__ == "__main__":
