@@ -12,16 +12,16 @@
       "iconUri": "https://github.com/afonsojramos/magic-mapper-webos/releases/latest/download/largeIcon.png",
       "manifest": {
         "id": "com.github.afonsojramos.magicmapper",
-        "version": "1.1.0",
+        "version": "1.1.1",
         "type": "web",
         "title": "Magic Mapper",
         "appDescription": "Discover, disable, and remap LG Magic Remote buttons from the TV",
         "iconUri": "https://github.com/afonsojramos/magic-mapper-webos/releases/latest/download/largeIcon.png",
         "sourceUrl": "https://github.com/afonsojramos/magic-mapper-webos",
         "rootRequired": true,
-        "ipkUrl": "https://github.com/afonsojramos/magic-mapper-webos/releases/download/v1.1.0/com.github.afonsojramos.magicmapper_1.1.0_all.ipk",
+        "ipkUrl": "https://github.com/afonsojramos/magic-mapper-webos/releases/download/v1.1.1/com.github.afonsojramos.magicmapper_1.1.1_all.ipk",
         "ipkHash": {
-          "sha256": "79fc4d53fc5ea808ac4bbfd8a358c33c44aef66c64c397ff7e263b15580bcf85"
+          "sha256": "65d6dd63d918baaa3602e51055c80701799c1edd1bafa3406b7103d164738cd5"
         }
       }
     }
