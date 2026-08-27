@@ -1,6 +1,8 @@
 from __future__ import print_function
 
 import argparse
+import ctypes
+import ctypes.util
 import fcntl
 import json
 import os
@@ -9,6 +11,10 @@ import signal
 import struct
 import sys
 import time
+
+
+IN_CLOSE_WRITE = 0x00000008
+IN_MOVED_TO = 0x00000080
 
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -95,6 +101,39 @@ def replay_clean_keypress(output_device_path, code):
         os.close(output_device)
 
 
+def open_state_dir_watch(path):
+    """Watch path for writes via inotify (no stdlib binding, so ctypes calls libc directly)."""
+    try:
+        libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        watch_fd = libc.inotify_init()
+        if watch_fd == -1:
+            raise OSError(ctypes.get_errno(), "inotify_init failed")
+        if libc.inotify_add_watch(watch_fd, path.encode(), IN_CLOSE_WRITE | IN_MOVED_TO) == -1:
+            watch_err = ctypes.get_errno()
+            os.close(watch_fd)
+            raise OSError(watch_err, "inotify_add_watch failed")
+        return watch_fd
+    except (OSError, AttributeError, TypeError) as watch_setup_err:
+        print("WARNING: inotify unavailable (%s), falling back to periodic discovery checks" % watch_setup_err)
+        return None
+
+
+def drain_inotify_events(inotify_fd, watched_name):
+    """Read pending inotify events, return True if any names the watched file."""
+    raw = os.read(inotify_fd, 4096)
+    matched = False
+    offset = 0
+    while offset + 16 <= len(raw):
+        unused_wd, unused_mask, unused_cookie, name_len = struct.unpack_from("iIII", raw, offset)
+        del unused_wd, unused_mask, unused_cookie
+        offset += 16
+        name = raw[offset:offset + name_len].split(b"\x00", 1)[0].decode()
+        offset += name_len
+        if name == watched_name:
+            matched = True
+    return matched
+
+
 def load_config():
     with open(CONFIG_PATH) as config_file:
         return json.load(config_file)
@@ -156,6 +195,10 @@ def input_loop(button_map):
         os.path.join(STATE_DIR, "discover-request.json"),
         os.path.join(STATE_DIR, "discover-result.json"),
     )
+    if not os.path.isdir(STATE_DIR):
+        os.makedirs(STATE_DIR)
+    watched_request_name = os.path.basename(discovery.request_path)
+    inotify_fd = open_state_dir_watch(STATE_DIR)
 
     input_device_path = upstream.resolve_input_device_by_name(upstream.DEVICE_NAME)
     if not input_device_path:
@@ -187,17 +230,22 @@ def input_loop(button_map):
 
         while not STOP_REQUESTED:
             now = time.time()
-            discovery.poll(pressed_codes, now)
             if now - last_status >= 2:
+                discovery.signal_request_check()
                 write_status(True, button_map, input_device_path, output_device_path, discovery)
                 last_status = now
+            discovery.poll(pressed_codes, now)
             if APP_DIR and not os.path.isdir(APP_DIR):
                 print("Application directory was removed, exiting")
                 break
 
-            readable, unused_write, unused_error = select.select([input_device], [], [], 0.25)
+            select_fds = [input_device] if inotify_fd is None else [input_device, inotify_fd]
+            readable, unused_write, unused_error = select.select(select_fds, [], [], 0.25)
             del unused_write, unused_error
-            if not readable:
+            if inotify_fd is not None and inotify_fd in readable:
+                if drain_inotify_events(inotify_fd, watched_request_name):
+                    discovery.signal_request_check()
+            if input_device not in readable:
                 continue
             event = input_device.read(event_size)
             if len(event) != event_size:
@@ -283,6 +331,8 @@ def input_loop(button_map):
         input_device.close()
         if output_device is not None:
             os.close(output_device)
+        if inotify_fd is not None:
+            os.close(inotify_fd)
         write_status(False, button_map, input_device_path, output_device_path, discovery)
 
 

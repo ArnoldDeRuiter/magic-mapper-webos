@@ -172,6 +172,11 @@ class DiscoveryController(object):
         self.armed_at = 0
         self.candidate = None
         self.suppressed_until_release = set()
+        self._request_signal = True
+
+    def signal_request_check(self):
+        """Mark the request file as worth re-reading (a write was observed, or none has happened yet)."""
+        self._request_signal = True
 
     def poll(self, pressed_codes, now=None):
         now = now if now is not None else time.time()
@@ -226,6 +231,9 @@ class DiscoveryController(object):
         }
 
     def _load_request(self, now):
+        if not self._request_signal:
+            return
+        self._request_signal = False
         try:
             with open(self.request_path) as request_file:
                 request = json.load(request_file)

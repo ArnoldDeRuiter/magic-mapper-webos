@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(ROOT_DIR, "runtime"))
 
 from magic_mapper_runtime import (
     DiscoveryController,
+    atomic_write_json,
     config_digest,
     load_action_catalog,
     needs_clean_back_replay,
@@ -20,7 +21,7 @@ from magic_mapper_runtime import (
     validate_config,
     validate_settings,
 )
-from managed_mapper import open_input_device, write_passthrough
+from managed_mapper import drain_inotify_events, open_input_device, open_state_dir_watch, write_passthrough
 
 
 BUTTONS = {1: "netflix", 2: "prime", 3: "ok"}
@@ -295,6 +296,69 @@ class InputDeviceReadTests(unittest.TestCase):
             self.drain(self.reader),
             [(1, 115, 1), (0, 0, 0), (1, 115, 0), (0, 0, 0)],
         )
+
+
+class DiscoveryRequestSignalTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.request_path = os.path.join(self.temp_dir.name, "request.json")
+        self.result_path = os.path.join(self.temp_dir.name, "result.json")
+        self.discovery = DiscoveryController(self.request_path, self.result_path)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def request(self, request_id):
+        with open(self.request_path, "w") as request_file:
+            json.dump({"id": request_id}, request_file)
+
+    def test_first_poll_reads_a_request_already_on_disk(self):
+        self.request("req-1")
+        self.discovery.poll(set(), now=1)
+        self.assertEqual(self.discovery.request_id, "req-1")
+
+    def test_second_request_is_ignored_until_signalled(self):
+        self.request("req-1")
+        self.discovery.poll(set(), now=1)
+        self.request("req-2")
+        self.discovery.poll(set(), now=2)
+        self.assertEqual(self.discovery.request_id, "req-1")
+        self.discovery.signal_request_check()
+        self.discovery.poll(set(), now=3)
+        self.assertEqual(self.discovery.request_id, "req-2")
+
+
+class InotifyWatchTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.watch_fd = open_state_dir_watch(self.temp_dir.name)
+        if self.watch_fd is None:
+            self.skipTest("inotify unavailable on this platform")
+
+    def tearDown(self):
+        os.close(self.watch_fd)
+        self.temp_dir.cleanup()
+
+    def write_target(self, name):
+        target = os.path.join(self.temp_dir.name, name)
+        handle, tmp_path = tempfile.mkstemp(prefix=".magic-mapper-", dir=self.temp_dir.name)
+        with os.fdopen(handle, "w") as tmp_file:
+            json.dump({}, tmp_file)
+        os.rename(tmp_path, target)
+
+    def test_matches_the_watched_file_written_via_atomic_write_json(self):
+        atomic_write_json(os.path.join(self.temp_dir.name, "request.json"), {"id": "req-1"})
+        readable, unused_write, unused_error = select.select([self.watch_fd], [], [], 1.0)
+        del unused_write, unused_error
+        self.assertTrue(readable)
+        self.assertTrue(drain_inotify_events(self.watch_fd, "request.json"))
+
+    def test_ignores_writes_to_other_files_in_the_same_directory(self):
+        self.write_target("status.json")
+        readable, unused_write, unused_error = select.select([self.watch_fd], [], [], 1.0)
+        del unused_write, unused_error
+        self.assertTrue(readable)
+        self.assertFalse(drain_inotify_events(self.watch_fd, "request.json"))
 
 
 if __name__ == "__main__":
