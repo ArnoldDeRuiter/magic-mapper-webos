@@ -28,3 +28,23 @@ const manifest = {
 
 writeFileSync(manifestPath, `${JSON.stringify(manifest)}\n`);
 console.log(manifestPath);
+
+const releaseTag = process.env.RELEASE_TAG || `v${app.version}`;
+const repoPath = join(root, "dist", "repo.json");
+const repo = {
+  paging: { page: 1, count: 1, maxPage: 1, itemsTotal: 1 },
+  packages: [
+    {
+      id: manifest.id,
+      title: manifest.title,
+      iconUri: manifest.iconUri,
+      manifest: {
+        ...manifest,
+        ipkUrl: `https://github.com/${releaseRepository}/releases/download/${releaseTag}/${ipkName}`,
+      },
+    },
+  ],
+};
+
+writeFileSync(repoPath, `${JSON.stringify(repo, null, 2)}\n`);
+console.log(repoPath);

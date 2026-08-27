@@ -76,6 +76,20 @@ Software exploits generally fail without harming the TV, but careless changes ma
 brick it. Do not expose SSH or Telnet to the internet, re-check compatibility before installing
 firmware updates, and do not install LG's Developer Mode app on an already rooted TV.
 
+## Installing from Homebrew Channel
+
+Magic Mapper publishes a `repo.json` repository index with every release, so Homebrew Channel can
+track it and offer updates. The TV still needs root access and Homebrew Channel running as root.
+
+In Homebrew Channel, open **Add repository** and enter:
+
+```
+https://github.com/afonsojramos/magic-mapper-webos/releases/latest/download/repo.json
+```
+
+Magic Mapper then appears in the app list and updates alongside everything else Homebrew Channel
+manages.
+
 ## Manual installation
 
 Magic Mapper can be installed without the webOS Homebrew repository. This only replaces the app's
@@ -140,7 +154,8 @@ nub run check
 nub run package
 ```
 
-The IPK is written to `dist/`. `nub run manifest` creates the Homebrew Channel release manifest.
+The IPK is written to `dist/`. `nub run manifest` creates the Homebrew Channel release manifest and
+the `repo.json` repository index beside it.
 
 Useful commands:
 
@@ -171,6 +186,17 @@ nub run test:e2e
 ```
 
 The flow also refreshes the two screenshots in `assets/screenshots/`.
+
+## Releasing
+
+Releases are managed by [Release Please](https://github.com/googleapis/release-please). It reads the
+conventional commits on `main`, keeps a release pull request open carrying the next version and a
+generated `CHANGELOG.md`, and tags the release once that pull request is merged.
+
+Tagging then drives the build. CI writes the tag's version into `appinfo.json` and `package.json`,
+builds the IPK, and attaches it to the release along with `repo.json` describing that exact build.
+Versions are never bumped by hand, and nothing is committed back to `main`, so `appinfo.json` in the
+repository is a placeholder that the release build overwrites.
 
 ## State and removal
 

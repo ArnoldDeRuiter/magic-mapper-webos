@@ -24,92 +24,13 @@ jobs:
       - run: nub run check
       - run: nub run package
 
+  # Releases published by Release Please build through release-please.yml instead:
+  # events raised by GITHUB_TOKEN do not start another workflow run.
   release:
     if: github.event_name == 'release'
     needs: check
-    runs-on: ubuntu-latest
     permissions:
       contents: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: main
-
-      # The release tag is the single source of truth for the version --
-      # write it into both files instead of relying on someone remembering
-      # to bump them first. (Previously appinfo.json's version had to be
-      # bumped by hand before releasing; 1.0.4, 1.0.5, and 1.0.6 all shipped
-      # mislabeled internally because that manual step got skipped.)
-      - name: Set app version from release tag
-        env:
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          set -e
-          VERSION="${TAG#v}"
-          python3 - "$VERSION" <<'EOF'
-          import json, sys
-          version = sys.argv[1]
-          for path in ("appinfo.json", "package.json"):
-              with open(path) as f:
-                  data = json.load(f)
-              data["version"] = version
-              with open(path, "w") as f:
-                  json.dump(data, f, indent=2)
-                  f.write("\n")
-          EOF
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          package-manager-cache: false
-      - run: npm install --global @nubjs/nub@0.7.5
-      - run: nub ci
-      - run: nub run package
-      - run: nub run manifest
-
-      # Uploads to the release you already created (not gh release create --
-      # this repo's releases are made directly, not from a pre-pushed tag),
-      # matching the pattern the other ArnoldDeRuiter webos apps use.
-      - name: Attach release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release upload "${{ github.event.release.tag_name }}" dist/*.ipk dist/*.manifest.json
-          largeIcon.png --repo "${{ github.repository }}" --clobber
-
-      # Done in this same job (not a separate release-triggered workflow)
-      # so there's no race with the asset upload above -- the .ipk we hash
-      # is the exact file we just built, not something re-fetched over the
-      # API before the upload above has necessarily landed.
-      - name: Update repo.json
-        env:
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          set -e
-          IPK_PATH=$(ls dist/*.ipk)
-          IPK_NAME=$(basename "$IPK_PATH")
-          HASH=$(sha256sum "$IPK_PATH" | cut -d' ' -f1)
-          VERSION="${TAG#v}"
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/$IPK_NAME"
-          python3 - "$VERSION" "$DOWNLOAD_URL" "$HASH" <<'EOF'
-          import json, sys
-          version, ipk_url, sha256 = sys.argv[1:4]
-          with open("repo.json") as f:
-              data = json.load(f)
-          m = data["packages"][0]["manifest"]
-          m["version"] = version
-          m["ipkUrl"] = ipk_url
-          m["ipkHash"]["sha256"] = sha256
-          with open("repo.json", "w") as f:
-              json.dump(data, f, indent=2)
-              f.write("\n")
-          EOF
-
-      - name: Commit and push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add repo.json appinfo.json package.json
-          git diff --staged --quiet && exit 0
-          git commit -m "Set version to ${{ github.event.release.tag_name }}"
-          git push origin main
+    uses: ./.github/workflows/release-build.yml
+    with:
+      tag: ${{ github.event.release.tag_name }}
