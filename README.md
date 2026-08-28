@@ -84,7 +84,7 @@ track it and offer updates. The TV still needs root access and Homebrew Channel 
 In Homebrew Channel, open **Add repository** and enter:
 
 ```
-https://github.com/afonsojramos/magic-mapper-webos/releases/latest/download/repo.json
+https://github.com/ArnoldDeRuiter/magic-mapper-webos/releases/latest/download/repo.json
 ```
 
 Magic Mapper then appears in the app list and updates alongside everything else Homebrew Channel
