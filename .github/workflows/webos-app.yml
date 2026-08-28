@@ -24,8 +24,9 @@ jobs:
       - run: nub run check
       - run: nub run package
 
-  # Releases published by Release Please build through release-please.yml instead:
-  # events raised by GITHUB_TOKEN do not start another workflow run.
+  # A release you create manually (tag + "Draft a new release") fires this
+  # directly. No bot/PR-based release flow -- GitHub Actions isn't allowed
+  # to open pull requests on this repo, which is what release-please needs.
   release:
     if: github.event_name == 'release'
     needs: check

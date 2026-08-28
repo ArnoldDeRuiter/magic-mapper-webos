@@ -189,14 +189,13 @@ The flow also refreshes the two screenshots in `assets/screenshots/`.
 
 ## Releasing
 
-Releases are managed by [Release Please](https://github.com/googleapis/release-please). It reads the
-conventional commits on `main`, keeps a release pull request open carrying the next version and a
-generated `CHANGELOG.md`, and tags the release once that pull request is merged.
+Releases are created by hand: push to `main`, then draft a new GitHub release with the version
+number as the tag (e.g. `1.0.9`, no `v` prefix required).
 
-Tagging then drives the build. CI writes the tag's version into `appinfo.json` and `package.json`,
-builds the IPK, and attaches it to the release along with `repo.json` describing that exact build.
-Versions are never bumped by hand, and nothing is committed back to `main`, so `appinfo.json` in the
-repository is a placeholder that the release build overwrites.
+Publishing the release drives the build. CI writes the tag's version into `appinfo.json` and
+`package.json`, builds the IPK, and attaches it to the release along with `repo.json` describing
+that exact build. Versions are never bumped by hand, and nothing is committed back to `main`, so
+`appinfo.json` in the repository is a placeholder that the release build overwrites.
 
 ## State and removal
 
